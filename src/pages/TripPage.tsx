@@ -19,7 +19,9 @@ import {
   Grid,
   Divider,
   Dialog,
-  Fab
+  Fab,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -37,6 +39,7 @@ import { CreateQuestForm } from '../components/Quest/CreateQuestForm';
 import { QuestCard } from '../components/Quest/QuestCard';
 import { QuestDetailsModal } from '../components/Quest/QuestDetailsModal';
 import { PendingSubmissionListItem } from '../components/Submission/PendingSubmissionListItem';
+import { TripSubmissionListItem } from '../components/Submission/TripSubmissionListItem';
 import { ReviewModal } from '../components/Submission/ReviewModal';
 import { showNotification } from '../store/atoms/notificationAtom';
 import { useSetAtom } from 'jotai';
@@ -50,10 +53,15 @@ export const TripPage: React.FC = () => {
   const [createQuestDialogOpen, setCreateQuestDialogOpen] = React.useState(false);
   const [selectedQuest, setSelectedQuest] = React.useState<QuestDocument | null>(null);
   const setNotification = useSetAtom(showNotification);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   // Add state for review modal
   const [isReviewModalOpen, setIsReviewModalOpen] = React.useState(false);
   const [selectedSubmissionForReview, setSelectedSubmissionForReview] = React.useState<SubmissionDocument | null>(null);
+  
+  // Add state for submission filter
+  const [submissionFilter, setSubmissionFilter] = React.useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   
   // Fetch trip data
   const { 
@@ -180,6 +188,23 @@ export const TripPage: React.FC = () => {
     console.log('Final leaderboard entries:', entries);
     return entries;
   }, [participants, approvedSubmissions]);
+
+  // Filter submissions based on selected filter
+  const filteredSubmissions = React.useMemo(() => {
+    if (!allSubmissions) return [];
+    
+    switch (submissionFilter) {
+      case 'pending':
+        return allSubmissions.filter(sub => sub.status === 'pending');
+      case 'approved':
+        return allSubmissions.filter(sub => sub.status === 'approved');
+      case 'rejected':
+        return allSubmissions.filter(sub => sub.status === 'rejected');
+      case 'all':
+      default:
+        return allSubmissions;
+    }
+  }, [allSubmissions, submissionFilter]);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -356,6 +381,7 @@ export const TripPage: React.FC = () => {
             <Tab label="Leaderboard" />
             <Tab label="Members" />
             <Tab label="Info" />
+            <Tab label="Submissions" />
           </Tabs>
           
           <Box sx={{ p: 3 }}>
@@ -629,6 +655,120 @@ export const TripPage: React.FC = () => {
                     </Box>
                   </Grid>
                 </Grid>
+              </Box>
+            )}
+            
+            {tabValue === 4 && (
+              <Box>
+                <Typography variant="h6" gutterBottom>
+                  Submissions
+                </Typography>
+                
+                {isSubmissionsLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+                    <CircularProgress />
+                  </Box>
+                ) : isSubmissionsError ? (
+                  <Alert severity="error" sx={{ my: 2 }}>
+                    Error loading submissions: {submissionsError instanceof Error ? submissionsError.message : 'Unknown error'}
+                  </Alert>
+                ) : allSubmissions && allSubmissions.length > 0 ? (
+                  <>
+                    {/* Submission status filter chips */}
+                    <Box sx={{ 
+                      mb: 2, 
+                      display: 'flex', 
+                      gap: 0.5,
+                      flexWrap: 'wrap',
+                      justifyContent: isMobile ? 'center' : 'flex-start'
+                    }}>
+                      <Chip 
+                        label={`All (${allSubmissions.length})`}
+                        color="primary"
+                        variant={submissionFilter === 'all' ? 'filled' : 'outlined'}
+                        onClick={() => setSubmissionFilter('all')}
+                        sx={{ 
+                          fontSize: isMobile ? '0.7rem' : '0.8rem',
+                          height: isMobile ? '28px' : '32px',
+                          mb: 0.5,
+                          '& .MuiChip-label': { 
+                            px: isMobile ? 1 : 1.5 
+                          }
+                        }}
+                      />
+                      <Chip 
+                        label={`Pending (${pendingSubmissions.length})`}
+                        color="default"
+                        variant={submissionFilter === 'pending' ? 'filled' : 'outlined'}
+                        onClick={() => setSubmissionFilter('pending')}
+                        sx={{ 
+                          fontSize: isMobile ? '0.7rem' : '0.8rem',
+                          height: isMobile ? '28px' : '32px',
+                          mb: 0.5,
+                          '& .MuiChip-label': { 
+                            px: isMobile ? 1 : 1.5 
+                          }
+                        }}
+                      />
+                      <Chip 
+                        label={`Approved (${approvedSubmissions.length})`}
+                        color="success"
+                        variant={submissionFilter === 'approved' ? 'filled' : 'outlined'}
+                        onClick={() => setSubmissionFilter('approved')}
+                        sx={{ 
+                          fontSize: isMobile ? '0.7rem' : '0.8rem',
+                          height: isMobile ? '28px' : '32px',
+                          mb: 0.5,
+                          '& .MuiChip-label': { 
+                            px: isMobile ? 1 : 1.5 
+                          }
+                        }}
+                      />
+                      <Chip 
+                        label={`Rejected (${allSubmissions.filter(s => s.status === 'rejected').length})`}
+                        color="error"
+                        variant={submissionFilter === 'rejected' ? 'filled' : 'outlined'}
+                        onClick={() => setSubmissionFilter('rejected')}
+                        sx={{ 
+                          fontSize: isMobile ? '0.7rem' : '0.8rem',
+                          height: isMobile ? '28px' : '32px',
+                          mb: 0.5,
+                          '& .MuiChip-label': { 
+                            px: isMobile ? 1 : 1.5 
+                          }
+                        }}
+                      />
+                    </Box>
+                    
+                    <List>
+                      {filteredSubmissions
+                        .sort((a, b) => {
+                          // Sort by submission date (newest first)
+                          const dateA = a.submittedAt instanceof Timestamp ? a.submittedAt.toDate().getTime() : a.submittedAt?.getTime() || 0;
+                          const dateB = b.submittedAt instanceof Timestamp ? b.submittedAt.toDate().getTime() : b.submittedAt?.getTime() || 0;
+                          return dateB - dateA;
+                        })
+                        .map((submission) => {
+                          const quest = submission.questId && questsById[submission.questId];
+                          
+                          if (!quest) {
+                            return null; // Skip if quest not found
+                          }
+                          
+                          return (
+                            <TripSubmissionListItem
+                              key={submission.id}
+                              submission={submission}
+                              questTitle={quest.title}
+                              questPoints={quest.points}
+                            />
+                          );
+                        })}
+                    </List>
+                  </>
+                ) : (
+                  <Typography variant="body1">No submissions found.</Typography>
+                )}
               </Box>
             )}
           </Box>
