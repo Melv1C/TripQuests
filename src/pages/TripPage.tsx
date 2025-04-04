@@ -27,16 +27,20 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import AddIcon from '@mui/icons-material/Add';
 import { useAtomValue } from 'jotai';
 import { userDataAtom } from '../store/atoms/authAtoms';
-import { useDocument, useCollection } from '../hooks/useFirestore';
+import { useDocument, useCollection, useUpdateDocument } from '../hooks/useFirestore';
 import { TripDocument, ParticipantData } from '../types/Trip';
 import { QuestDocument } from '../types/Quest';
+import { SubmissionDocument } from '../types/Submission';
 import { where, orderBy } from 'firebase/firestore';
 import { Timestamp } from 'firebase/firestore';
 import CreateQuestForm from '../components/Quest/CreateQuestForm';
 import QuestCard from '../components/Quest/QuestCard';
 import QuestDetailsModal from '../components/Quest/QuestDetailsModal';
+import ReviewCard from '../components/Submission/ReviewCard';
 import { showNotification } from '../store/atoms/notificationAtom';
 import { useSetAtom } from 'jotai';
+import { reviewSubmission } from '../services/firestore/submissions';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 const TripPage: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
@@ -46,6 +50,7 @@ const TripPage: React.FC = () => {
   const [createQuestDialogOpen, setCreateQuestDialogOpen] = React.useState(false);
   const [selectedQuest, setSelectedQuest] = React.useState<QuestDocument | null>(null);
   const setNotification = useSetAtom(showNotification);
+  const queryClient = useQueryClient();
   
   // Fetch trip data
   const { 
@@ -85,6 +90,86 @@ const TripPage: React.FC = () => {
     ],
     { enabled: !!tripId }
   );
+  
+  // Fetch pending submissions for review
+  const {
+    data: pendingSubmissions,
+    isLoading: isPendingSubmissionsLoading,
+    isError: isPendingSubmissionsError,
+    error: pendingSubmissionsError
+  } = useCollection<SubmissionDocument>(
+    'submissions',
+    [
+      where('tripId', '==', tripId || ''),
+      where('status', '==', 'pending'),
+      orderBy('submittedAt', 'asc')
+    ],
+    { enabled: !!tripId }
+  );
+
+  // Filter out user's own submissions
+  const submissionsToReview = React.useMemo(() => {
+    if (!pendingSubmissions || !userData) return [];
+    return pendingSubmissions.filter(
+      submission => submission.submitterId !== userData.uid
+    );
+  }, [pendingSubmissions, userData]);
+
+  // Create a lookup object for quests by ID
+  const questsById = React.useMemo(() => {
+    if (!quests) return {};
+    return quests.reduce((acc, quest) => {
+      if (quest.id) {
+        acc[quest.id] = quest;
+      }
+      return acc;
+    }, {} as Record<string, QuestDocument>);
+  }, [quests]);
+
+  // Review submission mutation
+  const reviewMutation = useMutation({
+    mutationFn: async ({
+      submissionId,
+      questId,
+      decision
+    }: {
+      submissionId: string;
+      questId: string;
+      decision: 'approved' | 'rejected';
+    }) => {
+      if (!userData?.uid) {
+        throw new Error('User must be logged in to review submissions');
+      }
+      return reviewSubmission(submissionId, questId, userData.uid, decision);
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ 
+        queryKey: ['collection', 'submissions'] 
+      });
+      
+      // Show notification
+      setNotification({
+        message: `Submission ${variables.decision === 'approved' ? 'approved' : 'rejected'} successfully!`,
+        severity: variables.decision === 'approved' ? 'success' : 'info'
+      });
+    },
+    onError: (error) => {
+      console.error('Error reviewing submission:', error);
+      setNotification({
+        message: `Error reviewing submission: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        severity: 'error'
+      });
+    }
+  });
+
+  const handleReviewSubmission = (
+    submissionId: string,
+    questId: string,
+    decision: 'approved' | 'rejected'
+  ) => {
+    reviewMutation.mutate({ submissionId, questId, decision });
+  };
   
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -289,6 +374,63 @@ const TripPage: React.FC = () => {
                     >
                       Create Your First Quest
                     </Button>
+                  </Box>
+                )}
+                
+                {/* Pending Submissions for Review Section */}
+                {submissionsToReview && submissionsToReview.length > 0 && (
+                  <Box sx={{ mt: 4 }}>
+                    <Divider sx={{ mb: 3 }} />
+                    <Typography variant="h6" gutterBottom>
+                      Pending Submissions for Review
+                    </Typography>
+                    
+                    <Grid container spacing={2}>
+                      {submissionsToReview.map((submission) => {
+                        const quest = submission.questId && questsById[submission.questId];
+                        
+                        if (!quest) {
+                          return null; // Skip if quest not found
+                        }
+                        
+                        return (
+                          <Grid key={submission.id} size={12}>
+                            <ReviewCard
+                              submission={submission}
+                              quest={quest}
+                              onReview={handleReviewSubmission}
+                              isReviewing={reviewMutation.isPending && reviewMutation.variables?.submissionId === submission.id}
+                            />
+                          </Grid>
+                        );
+                      })}
+                    </Grid>
+                  </Box>
+                )}
+                
+                {isPendingSubmissionsLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+                    <CircularProgress size={24} />
+                  </Box>
+                ) : !isPendingSubmissionsError && submissionsToReview && submissionsToReview.length === 0 && (
+                  <Box sx={{ mt: 4 }}>
+                    <Divider sx={{ mb: 3 }} />
+                    <Typography variant="h6" gutterBottom>
+                      Pending Submissions for Review
+                    </Typography>
+                    <Box sx={{ textAlign: 'center', py: 3 }}>
+                      <Typography variant="body1" color="text.secondary">
+                        No pending submissions to review at this time.
+                      </Typography>
+                    </Box>
+                  </Box>
+                )}
+                
+                {isPendingSubmissionsError && (
+                  <Box sx={{ mt: 4 }}>
+                    <Alert severity="error" sx={{ my: 2 }}>
+                      Error loading submissions: {pendingSubmissionsError instanceof Error ? pendingSubmissionsError.message : 'Unknown error'}
+                    </Alert>
                   </Box>
                 )}
                 

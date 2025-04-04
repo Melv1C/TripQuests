@@ -93,15 +93,15 @@ service cloud.firestore {
       allow read: if isSignedIn() && isTripMember(resource.data.tripId);
       allow create: if isSignedIn() && 
                      isTripMember(request.resource.data.tripId) &&
-                     request.resource.data.userId == request.auth.uid &&
-                     hasValidFields(['questId', 'tripId', 'userId', 'content', 'imageUrls', 'status', 'createdAt']);
+                     request.resource.data.submitterId == request.auth.uid &&
+                     hasValidFields(['questId', 'tripId', 'submitterId', 'submitterPseudo', 'evidence', 'status', 'submittedAt']);
       allow update: if isSignedIn() && 
                      isTripMember(resource.data.tripId) &&
-                     (resource.data.userId == request.auth.uid || 
+                     (resource.data.submitterId == request.auth.uid || 
                       isAdmin(resource.data.tripId));
       allow delete: if isSignedIn() && 
                      isTripMember(resource.data.tripId) &&
-                     (resource.data.userId == request.auth.uid || 
+                     (resource.data.submitterId == request.auth.uid || 
                       isAdmin(resource.data.tripId));
     }
     
