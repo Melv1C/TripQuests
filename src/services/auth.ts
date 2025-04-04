@@ -2,7 +2,8 @@ import {
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
-  UserCredential 
+  UserCredential,
+  AuthError
 } from 'firebase/auth';
 import { doc, setDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
@@ -61,15 +62,18 @@ export async function registerUser(formData: RegisterFormData): Promise<UserCred
     });
     
     return userCredential;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Handle Firebase Auth specific errors
-    if (error.code === 'auth/email-already-in-use') {
-      throw new Error('Email already in use');
-    } else if (error.code === 'auth/weak-password') {
-      throw new Error('Password is too weak');
-    } else if (error.code) {
-      // Handle other Firebase Auth errors
-      throw new Error(`Registration failed: ${error.message}`);
+    if (error instanceof Error && 'code' in error) {
+      const firebaseError = error as AuthError;
+      if (firebaseError.code === 'auth/email-already-in-use') {
+        throw new Error('Email already in use');
+      } else if (firebaseError.code === 'auth/weak-password') {
+        throw new Error('Password is too weak');
+      } else if (firebaseError.code) {
+        // Handle other Firebase Auth errors
+        throw new Error(`Registration failed: ${firebaseError.message}`);
+      }
     }
     
     // Re-throw other errors
@@ -86,9 +90,12 @@ export async function registerUser(formData: RegisterFormData): Promise<UserCred
 export async function signIn(email: string, password: string): Promise<UserCredential> {
   try {
     return await signInWithEmailAndPassword(auth, email, password);
-  } catch (error: any) {
-    if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-      throw new Error('Invalid email or password');
+  } catch (error: unknown) {
+    if (error instanceof Error && 'code' in error) {
+      const firebaseError = error as AuthError;
+      if (firebaseError.code === 'auth/user-not-found' || firebaseError.code === 'auth/wrong-password') {
+        throw new Error('Invalid email or password');
+      }
     }
     throw new Error('Failed to sign in');
   }

@@ -1,0 +1,137 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function userExists(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId));
+    }
+    
+    function isTripMember(tripId) {
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/trips/$(tripId)/participants/$(request.auth.uid));
+    }
+    
+    function isAdmin(tripId) {
+      return isSignedIn() && 
+        get(/databases/$(database)/documents/trips/$(tripId)/participants/$(request.auth.uid)).data.role == 'organizer';
+    }
+    
+    function unchanged(field) {
+      return request.resource.data[field] == resource.data[field];
+    }
+    
+    function hasValidFields(requiredFields) {
+      return request.resource.data.keys().hasAll(requiredFields);
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(userId) && 
+                     hasValidFields(['displayName', 'email', 'photoURL', 'createdAt']);
+      allow update: if isOwner(userId) && 
+                     (!request.resource.data.diff(resource.data).affectedKeys()
+                       .hasAny(['email', 'createdAt']) || 
+                      (request.resource.data.keys().hasAny(['email']) && 
+                       unchanged('email')) ||
+                      (request.resource.data.keys().hasAny(['createdAt']) && 
+                       unchanged('createdAt')));
+      allow delete: if false; // Don't allow users to be deleted
+    }
+    
+    // Trips collection
+    match /trips/{tripId} {
+      allow read: if isSignedIn() && isTripMember(tripId);
+      allow create: if isSignedIn() && 
+                     request.resource.data.creatorId == request.auth.uid &&
+                     hasValidFields(['name', 'description', 'startDate', 'endDate', 'creatorId', 'createdAt']);
+      allow update: if isSignedIn() && (isAdmin(tripId) || 
+                    (resource.data.creatorId == request.auth.uid));
+      allow delete: if isSignedIn() && resource.data.creatorId == request.auth.uid;
+      
+      // Trip participants subcollection
+      match /participants/{participantId} {
+        allow read: if isSignedIn() && isTripMember(tripId);
+        allow create: if isSignedIn() && 
+                       ((isAdmin(tripId) && userExists(participantId)) || 
+                       (participantId == request.auth.uid && 
+                        get(/databases/$(database)/documents/trips/$(tripId)).data.inviteCode == 
+                        request.resource.data.inviteCode));
+        allow update: if isSignedIn() && 
+                       (isAdmin(tripId) || 
+                       (participantId == request.auth.uid && 
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])));
+        allow delete: if isSignedIn() && 
+                       (isAdmin(tripId) || participantId == request.auth.uid);
+      }
+    }
+    
+    // Quests collection
+    match /quests/{questId} {
+      allow read: if isSignedIn() && isTripMember(resource.data.tripId);
+      allow create: if isSignedIn() && 
+                     isTripMember(request.resource.data.tripId) &&
+                     hasValidFields(['title', 'description', 'points', 'tripId', 'creatorId', 'createdAt']);
+      allow update: if isSignedIn() && 
+                     isTripMember(resource.data.tripId) && 
+                     (isAdmin(resource.data.tripId) || resource.data.creatorId == request.auth.uid);
+      allow delete: if isSignedIn() && 
+                     isTripMember(resource.data.tripId) &&
+                     (isAdmin(resource.data.tripId) || resource.data.creatorId == request.auth.uid);
+    }
+    
+    // Submissions collection
+    match /submissions/{submissionId} {
+      allow read: if isSignedIn() && isTripMember(resource.data.tripId);
+      allow create: if isSignedIn() && 
+                     isTripMember(request.resource.data.tripId) &&
+                     request.resource.data.userId == request.auth.uid &&
+                     hasValidFields(['questId', 'tripId', 'userId', 'content', 'imageUrls', 'status', 'createdAt']);
+      allow update: if isSignedIn() && 
+                     isTripMember(resource.data.tripId) &&
+                     (resource.data.userId == request.auth.uid || 
+                      isAdmin(resource.data.tripId));
+      allow delete: if isSignedIn() && 
+                     isTripMember(resource.data.tripId) &&
+                     (resource.data.userId == request.auth.uid || 
+                      isAdmin(resource.data.tripId));
+    }
+    
+    // Reviews collection
+    match /reviews/{reviewId} {
+      allow read: if isSignedIn() && isTripMember(resource.data.tripId);
+      allow create: if isSignedIn() && 
+                     isTripMember(request.resource.data.tripId) &&
+                     request.resource.data.reviewerId == request.auth.uid &&
+                     request.resource.data.reviewerId != request.resource.data.submissionUserId &&
+                     hasValidFields(['submissionId', 'tripId', 'reviewerId', 'submissionUserId', 'rating', 'comment', 'createdAt']);
+      allow update: if isSignedIn() && 
+                     isTripMember(resource.data.tripId) &&
+                     resource.data.reviewerId == request.auth.uid;
+      allow delete: if isSignedIn() && 
+                     isTripMember(resource.data.tripId) &&
+                     (resource.data.reviewerId == request.auth.uid || 
+                      isAdmin(resource.data.tripId));
+    }
+    
+    // Leaderboard stats (can be a separate collection or computed on-the-fly)
+    match /leaderboard/{entryId} {
+      allow read: if isSignedIn() && isTripMember(resource.data.tripId);
+      // No direct writes - should be updated by cloud functions
+      allow write: if false;
+    }
+    
+    // Default deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+} 

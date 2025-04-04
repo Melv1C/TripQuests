@@ -11,8 +11,7 @@ import {
   where,
   getDocs,
   getDoc,
-  limit,
-  documentId
+  limit
 } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { CreateTripFormData, TripDocument } from '../../types/Trip';
@@ -169,29 +168,35 @@ export const getTripsByIds = async (tripIds: string[]): Promise<TripDocument[]> 
     // For larger lists (>10), consider using 'in' query if within Firestore limits
     
     const tripPromises = tripIds.map(async (tripId) => {
-      const tripRef = doc(db, 'trips', tripId);
-      const tripDoc = await getDoc(tripRef);
-      
-      if (!tripDoc.exists()) {
-        console.warn(`Trip with ID ${tripId} not found`);
+      try {
+        const tripRef = doc(db, 'trips', tripId);
+        const tripDoc = await getDoc(tripRef);
+        
+        if (!tripDoc.exists()) {
+          console.warn(`Trip with ID ${tripId} not found`);
+          return null;
+        }
+        
+        const tripData = tripDoc.data();
+        
+        // Convert Firestore Timestamps to JavaScript Dates
+        return {
+          ...tripData,
+          id: tripId,
+          startDate: tripData.startDate ? tripData.startDate.toDate() : null,
+          endDate: tripData.endDate ? tripData.endDate.toDate() : null,
+          createdAt: tripData.createdAt ? tripData.createdAt.toDate() : null,
+        } as TripDocument;
+      } catch (error) {
+        // Handle permission errors for individual trips
+        console.warn(`Error fetching trip ${tripId}:`, error);
         return null;
       }
-      
-      const tripData = tripDoc.data();
-      
-      // Convert Firestore Timestamps to JavaScript Dates
-      return {
-        ...tripData,
-        id: tripId,
-        startDate: tripData.startDate ? tripData.startDate.toDate() : null,
-        endDate: tripData.endDate ? tripData.endDate.toDate() : null,
-        createdAt: tripData.createdAt ? tripData.createdAt.toDate() : null,
-      } as TripDocument;
     });
     
     const trips = await Promise.all(tripPromises);
     
-    // Filter out any null results (trips that weren't found)
+    // Filter out any null results (trips that weren't found or permission denied)
     return trips.filter((trip): trip is TripDocument => trip !== null);
   } catch (error) {
     console.error('Error fetching trips:', error);

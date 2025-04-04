@@ -17,22 +17,30 @@ import {
   CircularProgress, 
   Alert,
   Grid,
-  Divider 
+  Divider,
+  Dialog,
+  Fab
 } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import AddIcon from '@mui/icons-material/Add';
 import { useAtomValue } from 'jotai';
 import { userDataAtom } from '../store/atoms/authAtoms';
 import { useDocument, useCollection } from '../hooks/useFirestore';
 import { TripDocument, ParticipantData } from '../types/Trip';
+import { QuestDocument } from '../types/Quest';
+import { where, orderBy } from 'firebase/firestore';
 import { Timestamp } from 'firebase/firestore';
+import CreateQuestForm from '../components/Quest/CreateQuestForm';
+import QuestCard from '../components/Quest/QuestCard';
 
 const TripPage: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
   const [tabValue, setTabValue] = React.useState(0);
   const userData = useAtomValue(userDataAtom);
   const [copySuccess, setCopySuccess] = React.useState(false);
+  const [createQuestDialogOpen, setCreateQuestDialogOpen] = React.useState(false);
   
   // Fetch trip data
   const { 
@@ -57,6 +65,21 @@ const TripPage: React.FC = () => {
     [], 
     { enabled: !!tripId }
   );
+
+  // Fetch quests for this trip
+  const {
+    data: quests,
+    isLoading: isQuestsLoading,
+    isError: isQuestsError,
+    error: questsError
+  } = useCollection<QuestDocument>(
+    'quests',
+    [
+      where('tripId', '==', tripId || ''),
+      orderBy('createdAt', 'desc')
+    ],
+    { enabled: !!tripId }
+  );
   
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -68,6 +91,19 @@ const TripPage: React.FC = () => {
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     }
+  };
+  
+  const handleOpenCreateQuestDialog = () => {
+    setCreateQuestDialogOpen(true);
+  };
+
+  const handleCloseCreateQuestDialog = () => {
+    setCreateQuestDialogOpen(false);
+  };
+
+  const handleQuestClick = (questId: string) => {
+    // This will be implemented later for quest details view
+    console.log(`View quest details for: ${questId}`);
   };
   
   // Check if current user is a participant in this trip
@@ -202,9 +238,77 @@ const TripPage: React.FC = () => {
           
           <Box sx={{ p: 3 }}>
             {tabValue === 0 && (
-              <Typography variant="body1">
-                Quests tab content will appear here. This is a placeholder.
-              </Typography>
+              <Box sx={{ position: 'relative' }}>
+                <Typography variant="h6" gutterBottom>
+                  Quests
+                </Typography>
+                
+                {isQuestsLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+                    <CircularProgress />
+                  </Box>
+                ) : isQuestsError ? (
+                  <Alert severity="error" sx={{ my: 2 }}>
+                    Error loading quests: {questsError instanceof Error ? questsError.message : 'Unknown error'}
+                  </Alert>
+                ) : quests && quests.length > 0 ? (
+                  <Grid container spacing={2}>
+                    {quests.map((quest) => (
+                      <Grid key={quest.id} size={{ xs: 12, sm: 6, md: 4 }}>
+                        <QuestCard 
+                          quest={quest} 
+                          onClick={() => quest.id && handleQuestClick(quest.id)}
+                        />
+                      </Grid>
+                    ))}
+                  </Grid>
+                ) : (
+                  <Box sx={{ my: 4, textAlign: 'center' }}>
+                    <Typography variant="body1" gutterBottom>
+                      No quests created yet. Be the first!
+                    </Typography>
+                    <Button 
+                      variant="contained" 
+                      startIcon={<AddIcon />}
+                      onClick={handleOpenCreateQuestDialog}
+                      sx={{ mt: 2 }}
+                    >
+                      Create Your First Quest
+                    </Button>
+                  </Box>
+                )}
+                
+                {/* Floating action button to create a new quest */}
+                {quests && quests.length > 0 && (
+                  <Fab
+                    color="primary"
+                    aria-label="add quest"
+                    onClick={handleOpenCreateQuestDialog}
+                    sx={{
+                      position: 'fixed',
+                      bottom: 24,
+                      right: 24,
+                    }}
+                  >
+                    <AddIcon />
+                  </Fab>
+                )}
+                
+                {/* Create Quest Dialog */}
+                <Dialog 
+                  open={createQuestDialogOpen} 
+                  onClose={handleCloseCreateQuestDialog}
+                  maxWidth="sm"
+                  fullWidth
+                >
+                  <Box sx={{ p: 3 }}>
+                    <CreateQuestForm
+                      tripId={tripId || ''}
+                      onClose={handleCloseCreateQuestDialog}
+                    />
+                  </Box>
+                </Dialog>
+              </Box>
             )}
             
             {tabValue === 1 && (
