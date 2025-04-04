@@ -53,9 +53,14 @@ export function ReviewModal(props: ReviewModalProps) {
       return reviewSubmission(submissionId, questId, userData.uid, decision);
     },
     onSuccess: (_, variables) => {
-      // Invalidate queries to refresh data
+      // Invalidate submissions queries to refresh data
       queryClient.invalidateQueries({ 
         queryKey: ['collection', 'submissions'] 
+      });
+      
+      // Invalidate userTrips query to refresh dashboard data including scores
+      queryClient.invalidateQueries({ 
+        queryKey: ['userTrips'] 
       });
       
       // Show notification

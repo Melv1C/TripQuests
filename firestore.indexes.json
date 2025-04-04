@@ -22,7 +22,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "tripId", "order": "ASCENDING" },
-        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "submitterId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
@@ -33,14 +33,6 @@
         { "fieldPath": "tripId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "submittedAt", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "reviews",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "submissionId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "ASCENDING" }
       ]
     },
     {

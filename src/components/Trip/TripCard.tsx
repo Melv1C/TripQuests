@@ -4,11 +4,17 @@ import {
   Card, 
   CardContent,
   Typography, 
-  Box
+  Box,
+  Chip,
+  Skeleton
 } from '@mui/material';
 import { TripDocument } from '../../types/Trip';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import StarIcon from '@mui/icons-material/Star';
+import { useAtomValue } from 'jotai';
+import { userDataAtom } from '../../store/atoms/authAtoms';
+import { useUserTripScore } from '../../hooks/useUserTripScore';
 
 interface TripCardProps {
   trip: TripDocument;
@@ -19,6 +25,15 @@ interface TripCardProps {
  * The entire card is clickable and navigates to the trip details
  */
 const TripCard: React.FC<TripCardProps> = ({ trip }) => {
+  // Get current user
+  const userData = useAtomValue(userDataAtom);
+  
+  // Get user's score for this trip
+  const { score, isLoading: isScoreLoading } = useUserTripScore(
+    trip.id || '', // Provide empty string as fallback if trip.id is undefined
+    userData?.uid
+  );
+  
   // Format dates nicely if available
   const formatDate = (date: Date | null) => {
     if (!date) return 'TBD';
@@ -61,15 +76,32 @@ const TripCard: React.FC<TripCardProps> = ({ trip }) => {
       }}
     >
       <CardContent sx={{ flexGrow: 1, p: 3 }}>
-        <Typography 
-          gutterBottom 
-          variant="h5" 
-          component="div" 
-          color="text.primary"
-          fontWeight="500"
-        >
-          {trip.name}
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+          <Typography 
+            gutterBottom 
+            variant="h5" 
+            component="div" 
+            color="text.primary"
+            fontWeight="500"
+            sx={{ mb: 0 }}
+          >
+            {trip.name}
+          </Typography>
+          
+          {/* User's score for this trip */}
+          {isScoreLoading ? (
+            <Skeleton variant="rounded" width={80} height={32} />
+          ) : (
+            <Chip
+              icon={<StarIcon />}
+              label={`${score} pts`}
+              size="small"
+              color="primary"
+              variant="outlined"
+              sx={{ fontWeight: 500 }}
+            />
+          )}
+        </Box>
         
         {trip.location && (
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>

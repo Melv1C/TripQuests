@@ -93,38 +93,23 @@ export const TripPage: React.FC = () => {
     ],
     { enabled: !!tripId }
   );
-  
-  // Fetch pending submissions for review
-  const {
-    data: pendingSubmissions,
-    isLoading: isPendingSubmissionsLoading,
-    isError: isPendingSubmissionsError,
-    error: pendingSubmissionsError
-  } = useCollection<SubmissionDocument>(
+
+  // Check all submissions regardless of status
+  const { data: allSubmissions, isLoading: isSubmissionsLoading, isError: isSubmissionsError, error: submissionsError } = useCollection<SubmissionDocument>(
     'submissions',
-    [
-      where('tripId', '==', tripId || ''),
-      where('status', '==', 'pending'),
-      orderBy('submittedAt', 'asc')
-    ],
+    [where('tripId', '==', tripId || '')],
     { enabled: !!tripId }
   );
 
-  // Fetch approved submissions for leaderboard
-  const {
-    data: approvedSubmissions,
-    isLoading: isApprovedSubmissionsLoading,
-    isError: isApprovedSubmissionsError,
-    error: approvedSubmissionsError
-  } = useCollection<SubmissionDocument>(
-    'submissions',
-    [
-      where('tripId', '==', tripId || ''),
-      where('status', '==', 'approved'),
-      orderBy('submittedAt', 'desc')
-    ],
-    { enabled: !!tripId }
-  );
+  const approvedSubmissions = React.useMemo(() => {
+    if (!allSubmissions) return [];
+    return allSubmissions.filter(sub => sub.status === 'approved');
+  }, [allSubmissions]);
+
+  const pendingSubmissions = React.useMemo(() => {
+    if (!allSubmissions) return [];
+    return allSubmissions.filter(sub => sub.status === 'pending');
+  }, [allSubmissions]);
 
   // Filter out user's own submissions
   const submissionsToReview = React.useMemo(() => {
@@ -162,29 +147,29 @@ export const TripPage: React.FC = () => {
     
     // Create leaderboard entries
     let entries = participants.map(participant => ({
-      userId: participant.uid,
+      userId: participant.id,
       pseudo: participant.pseudo,
       avatarUrl: participant.avatarUrl,
-      totalPoints: pointsMap[participant.uid] || 0,
+      totalPoints: pointsMap[participant.id] || 0,
       rank: 0 // Placeholder, will be calculated after sorting
     }));
     
     // Sort by points (descending)
     entries.sort((a, b) => b.totalPoints - a.totalPoints);
+
+    console.log('entries', entries);
     
     // Assign ranks (handling ties)
     let currentRank = 1;
-    let currentPoints = -1;
-    let skipCount = 0;
+    let currentPoints = entries[0]?.totalPoints ?? -1;
     
-    entries = entries.map((entry) => {
+    entries = entries.map((entry, index) => {
       if (entry.totalPoints !== currentPoints) {
-        currentRank = currentRank + skipCount;
-        skipCount = 0;
+        // New points value, so rank becomes the current position + 1
+        currentRank = index + 1;
         currentPoints = entry.totalPoints;
-      } else {
-        skipCount++;
       }
+      // Same points as previous, so keep same rank
       
       return {
         ...entry,
@@ -192,6 +177,7 @@ export const TripPage: React.FC = () => {
       };
     });
     
+    console.log('Final leaderboard entries:', entries);
     return entries;
   }, [participants, approvedSubmissions]);
 
@@ -254,7 +240,7 @@ export const TripPage: React.FC = () => {
     
     // Check if user exists in the participants collection
     if (participants) {
-      return participants.some(participant => participant.uid === userData.uid);
+      return participants.some(participant => participant.id === userData.uid);
     }
     
     return false;
@@ -444,11 +430,11 @@ export const TripPage: React.FC = () => {
                   </Box>
                 )}
                 
-                {isPendingSubmissionsLoading ? (
+                {isSubmissionsLoading ? (
                   <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
                     <CircularProgress size={24} />
                   </Box>
-                ) : !isPendingSubmissionsError && submissionsToReview && submissionsToReview.length === 0 && (
+                ) : !isSubmissionsError && submissionsToReview && submissionsToReview.length === 0 && (
                   <Box sx={{ mt: 4 }}>
                     <Divider sx={{ mb: 3 }} />
                     <Typography variant="h6" gutterBottom>
@@ -462,10 +448,10 @@ export const TripPage: React.FC = () => {
                   </Box>
                 )}
                 
-                {isPendingSubmissionsError && (
+                {isSubmissionsError && (
                   <Box sx={{ mt: 4 }}>
                     <Alert severity="error" sx={{ my: 2 }}>
-                      Error loading submissions: {pendingSubmissionsError instanceof Error ? pendingSubmissionsError.message : 'Unknown error'}
+                      Error loading submissions: {submissionsError instanceof Error ? submissionsError.message : 'Unknown error'}
                     </Alert>
                   </Box>
                 )}
@@ -528,17 +514,17 @@ export const TripPage: React.FC = () => {
                   Leaderboard
                 </Typography>
                 
-                {isParticipantsLoading || isApprovedSubmissionsLoading ? (
+                {isParticipantsLoading || isSubmissionsLoading ? (
                   <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
                     <CircularProgress />
                   </Box>
-                ) : isParticipantsError || isApprovedSubmissionsError ? (
+                ) : isParticipantsError || isSubmissionsError ? (
                   <Alert severity="error" sx={{ my: 2 }}>
                     Error loading leaderboard data: {
                       (isParticipantsError && participantsError instanceof Error) 
                         ? participantsError.message 
-                        : (isApprovedSubmissionsError && approvedSubmissionsError instanceof Error)
-                          ? approvedSubmissionsError.message
+                        : (isSubmissionsError && submissionsError instanceof Error)
+                          ? submissionsError.message
                           : 'Unknown error'
                     }
                   </Alert>
@@ -565,7 +551,7 @@ export const TripPage: React.FC = () => {
                 ) : participants && participants.length > 0 ? (
                   <List>
                     {participants.map((participant) => (
-                      <ListItem key={participant.uid}>
+                      <ListItem key={participant.id}>
                         <ListItemAvatar>
                           <Avatar src={participant.avatarUrl || undefined} alt={participant.pseudo}>
                             {participant.pseudo.charAt(0).toUpperCase()}

@@ -116,28 +116,21 @@ service cloud.firestore {
                      hasValidFields(['questId', 'tripId', 'submitterId', 'submitterPseudo', 'evidence', 'status', 'submittedAt']);
       allow update: if isSignedIn() && 
                      isTripMember(resource.data.tripId) &&
-                     (resource.data.submitterId == request.auth.uid || 
-                      isAdmin(resource.data.tripId));
+                     (
+                       // Case 1: User is updating their own submission (but not the review fields)
+                       (resource.data.submitterId == request.auth.uid && 
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'reviewerId', 'reviewedAt', 'pointsAwarded']))
+                       ||
+                       // Case 2: User is reviewing someone else's submission
+                       (resource.data.submitterId != request.auth.uid && 
+                        request.resource.data.reviewerId == request.auth.uid)
+                       ||
+                       // Case 3: User is an admin
+                       isAdmin(resource.data.tripId)
+                     );
       allow delete: if isSignedIn() && 
                      isTripMember(resource.data.tripId) &&
                      (resource.data.submitterId == request.auth.uid || 
-                      isAdmin(resource.data.tripId));
-    }
-    
-    // Reviews collection
-    match /reviews/{reviewId} {
-      allow read: if isSignedIn() && isTripMember(resource.data.tripId);
-      allow create: if isSignedIn() && 
-                     isTripMember(request.resource.data.tripId) &&
-                     request.resource.data.reviewerId == request.auth.uid &&
-                     request.resource.data.reviewerId != request.resource.data.submissionUserId &&
-                     hasValidFields(['submissionId', 'tripId', 'reviewerId', 'submissionUserId', 'rating', 'comment', 'createdAt']);
-      allow update: if isSignedIn() && 
-                     isTripMember(resource.data.tripId) &&
-                     resource.data.reviewerId == request.auth.uid;
-      allow delete: if isSignedIn() && 
-                     isTripMember(resource.data.tripId) &&
-                     (resource.data.reviewerId == request.auth.uid || 
                       isAdmin(resource.data.tripId));
     }
     
