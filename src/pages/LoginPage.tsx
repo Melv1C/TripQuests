@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
+import { useAtomValue } from 'jotai';
 
 // MUI Components
 import {
@@ -27,10 +28,22 @@ import PasswordField from '../components/form/PasswordField';
 // Schemas and Services
 import { loginSchema, LoginFormValues } from '../lib/schemas/auth';
 import { signIn } from '../services/auth';
+import { currentUserAtom, isAuthLoadingAtom } from '../store/atoms/authAtoms';
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const [generalError, setGeneralError] = useState<string | null>(null);
+  
+  // Get authentication state from Jotai
+  const currentUser = useAtomValue(currentUserAtom);
+  const isAuthLoading = useAtomValue(isAuthLoadingAtom);
+  
+  // Redirect to dashboard if user is already logged in
+  useEffect(() => {
+    if (!isAuthLoading && currentUser) {
+      navigate('/dashboard');
+    }
+  }, [isAuthLoading, currentUser, navigate]);
   
   // Form setup with React Hook Form and Zod validation
   const {
@@ -49,8 +62,7 @@ const LoginPage = () => {
   const mutation = useMutation({
     mutationFn: (data: LoginFormValues) => signIn(data.email, data.password),
     onSuccess: () => {
-      // Redirect to dashboard on successful login
-      navigate('/dashboard');
+      // Redirect happens automatically via the useEffect hook when currentUser is updated
     },
     onError: (error: Error) => {
       // Handle login errors
@@ -63,6 +75,28 @@ const LoginPage = () => {
     setGeneralError(null);
     mutation.mutate(data);
   };
+
+  // Show loading indicator while checking auth state
+  if (isAuthLoading) {
+    return (
+      <Container maxWidth="sm">
+        <Box
+          sx={{
+            mt: 8,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <CircularProgress />
+          <Typography variant="body1" sx={{ mt: 2 }}>
+            Checking authentication status...
+          </Typography>
+        </Box>
+      </Container>
+    );
+  }
 
   return (
     <Container maxWidth="sm">

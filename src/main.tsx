@@ -5,7 +5,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import { BrowserRouter } from 'react-router-dom'
-import { AuthProvider } from './contexts/AuthContext'
+import { Provider as JotaiProvider } from 'jotai'
 import theme from './lib/theme'
 import App from './App.tsx'
 
@@ -23,16 +23,16 @@ const queryClient = new QueryClient({
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <BrowserRouter>
-          <AuthProvider>
+    <JotaiProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          <BrowserRouter>
             <App />
-          </AuthProvider>
-        </BrowserRouter>
-        {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
-      </ThemeProvider>
-    </QueryClientProvider>
+          </BrowserRouter>
+          {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+        </ThemeProvider>
+      </QueryClientProvider>
+    </JotaiProvider>
   </StrictMode>,
 )

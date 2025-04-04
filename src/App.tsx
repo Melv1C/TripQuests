@@ -2,11 +2,15 @@ import React from 'react';
 import Box from '@mui/material/Box';
 import FirebaseStatus from './components/FirebaseStatus';
 import NotificationAlert from './components/NotificationAlert';
+import AuthListener from './components/AuthListener';
 import AppRoutes from './routes';
 
 function App() {
   return (
     <>
+      {/* Auth state listener component */}
+      <AuthListener />
+      
       <NotificationAlert />
       <AppRoutes />
       
