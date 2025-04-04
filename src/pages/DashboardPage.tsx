@@ -11,21 +11,25 @@ import {
   Button,
   Divider,
   Alert,
-  Snackbar
+  Snackbar,
+  Skeleton,
+  Stack
 } from '@mui/material';
 import { useAtomValue } from 'jotai';
 import { currentUserAtom, userDataAtom, isAuthLoadingAtom } from '../store/atoms/authAtoms';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { joinTripSchema, JoinTripFormData } from '../lib/schemas/trip';
-import { useMutation } from '@tanstack/react-query';
-import { joinTripByInviteCode } from '../services/firestore/trips';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { getTripsByIds, joinTripByInviteCode } from '../services/firestore/trips';
+import TripCard from '../components/Trip/TripCard';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const currentUser = useAtomValue(currentUserAtom);
   const userData = useAtomValue(userDataAtom);
   const isAuthLoading = useAtomValue(isAuthLoadingAtom);
+  const queryClient = useQueryClient();
   const [snackbar, setSnackbar] = React.useState<{
     open: boolean;
     message: string;
@@ -49,6 +53,18 @@ const DashboardPage: React.FC = () => {
     }
   });
 
+  // Fetch user's trips
+  const { 
+    data: tripsData, 
+    isLoading: isTripsLoading, 
+    isError: isTripsError,
+    error: tripsError 
+  } = useQuery({
+    queryKey: ['userTrips', userData?.uid, userData?.participatingTripIds],
+    queryFn: () => getTripsByIds(userData?.participatingTripIds || []),
+    enabled: !!userData && userData.participatingTripIds.length > 0
+  });
+
   // Join trip mutation
   const joinTripMutation = useMutation({
     mutationFn: ({ inviteCode }: JoinTripFormData) => {
@@ -66,6 +82,8 @@ const DashboardPage: React.FC = () => {
       });
       // Reset form
       reset();
+      // Invalidate the trips query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['userTrips', userData?.uid] });
     },
     onError: (error: Error) => {
       // Show error message
@@ -112,6 +130,49 @@ const DashboardPage: React.FC = () => {
     );
   }
 
+  // Render trip list or appropriate message
+  const renderTripList = () => {
+    if (isTripsLoading) {
+      // Show skeleton loading state for trips
+      return (
+        <Grid container spacing={3}>
+          {[1, 2, 3].map((item) => (
+            <Grid key={item} size={{ xs: 12, sm: 6, md: 4 }}>
+              <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 1 }} />
+            </Grid>
+          ))}
+        </Grid>
+      );
+    }
+
+    if (isTripsError) {
+      return (
+        <Alert severity="error" sx={{ my: 2 }}>
+          {tripsError instanceof Error ? tripsError.message : 'Failed to load your trips. Please try again later.'}
+        </Alert>
+      );
+    }
+
+    if (!tripsData || tripsData.length === 0) {
+      return (
+        <Typography variant="body2" sx={{ my: 2 }}>
+          You haven't joined any trips yet. Create a new trip or join an existing one using an invite code!
+        </Typography>
+      );
+    }
+
+    // Display trip cards in a grid
+    return (
+      <Grid container spacing={3} sx={{ mt: 1 }}>
+        {tripsData.map((trip) => (
+          <Grid key={trip.id} size={{ xs: 12, sm: 6, md: 4 }}>
+            <TripCard trip={trip} />
+          </Grid>
+        ))}
+      </Grid>
+    );
+  };
+
   return (
     <Container maxWidth="lg">
       <Box sx={{ my: 4 }}>
@@ -123,23 +184,25 @@ const DashboardPage: React.FC = () => {
         </Typography>
         
         <Grid container spacing={3} sx={{ mt: 2 }}>
-          <Grid size={{ xs: 12, md: 6 }}>
+          <Grid size={{ xs: 12, md: 8 }}>
             <Paper elevation={2} sx={{ p: 3, height: '100%' }}>
               <Typography variant="h5" component="h2" gutterBottom>
                 Your Trips
               </Typography>
-              {userData.participatingTripIds.length > 0 ? (
-                <Typography>
-                  You have {userData.participatingTripIds.length} {userData.participatingTripIds.length === 1 ? 'trip' : 'trips'}.
-                </Typography>
-              ) : (
-                <Typography variant="body2">
-                  You haven't joined any trips yet. Create a new trip or join an existing one!
-                </Typography>
-              )}
+              {renderTripList()}
+              
+              <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+                <Button 
+                  variant="outlined" 
+                  color="primary" 
+                  onClick={() => navigate('/create-trip')}
+                >
+                  Create New Trip
+                </Button>
+              </Box>
             </Paper>
           </Grid>
-          <Grid size={{ xs: 12, md: 6 }}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <Paper elevation={2} sx={{ p: 3, height: '100%' }}>
               <Typography variant="h5" component="h2" gutterBottom>
                 Pending Quests

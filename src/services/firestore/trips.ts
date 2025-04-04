@@ -11,7 +11,8 @@ import {
   where,
   getDocs,
   getDoc,
-  limit
+  limit,
+  documentId
 } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { CreateTripFormData, TripDocument } from '../../types/Trip';
@@ -148,5 +149,52 @@ export const joinTripByInviteCode = async (
     
     // Otherwise throw a generic error
     throw new Error('Failed to join trip. Please try again later.');
+  }
+};
+
+/**
+ * Fetches trip data for multiple trip IDs
+ * 
+ * @param tripIds Array of trip document IDs to fetch
+ * @returns Array of TripDocument objects with id included
+ */
+export const getTripsByIds = async (tripIds: string[]): Promise<TripDocument[]> => {
+  try {
+    // If no trip IDs provided, return empty array immediately
+    if (!tripIds || tripIds.length === 0) {
+      return [];
+    }
+
+    // This example uses multiple getDoc calls which works well for small numbers of trips
+    // For larger lists (>10), consider using 'in' query if within Firestore limits
+    
+    const tripPromises = tripIds.map(async (tripId) => {
+      const tripRef = doc(db, 'trips', tripId);
+      const tripDoc = await getDoc(tripRef);
+      
+      if (!tripDoc.exists()) {
+        console.warn(`Trip with ID ${tripId} not found`);
+        return null;
+      }
+      
+      const tripData = tripDoc.data();
+      
+      // Convert Firestore Timestamps to JavaScript Dates
+      return {
+        ...tripData,
+        id: tripId,
+        startDate: tripData.startDate ? tripData.startDate.toDate() : null,
+        endDate: tripData.endDate ? tripData.endDate.toDate() : null,
+        createdAt: tripData.createdAt ? tripData.createdAt.toDate() : null,
+      } as TripDocument;
+    });
+    
+    const trips = await Promise.all(tripPromises);
+    
+    // Filter out any null results (trips that weren't found)
+    return trips.filter((trip): trip is TripDocument => trip !== null);
+  } catch (error) {
+    console.error('Error fetching trips:', error);
+    throw new Error('Failed to load trips. Please try again later.');
   }
 };
