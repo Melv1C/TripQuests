@@ -32,6 +32,16 @@ service cloud.firestore {
       return request.resource.data.keys().hasAll(requiredFields);
     }
     
+    // For the special case of pseudo update, check if the only thing we're changing is creatorPseudo
+    function isOnlyUpdatingCreatorPseudo() {
+      // When using updateDoc with one field, we need to check if:
+      // 1. creatorPseudo is present in the request
+      // 2. Either it's the only field in the request OR creatorPseudo is the only field changing
+      return request.resource.data.keys().hasAny(['creatorPseudo']) && 
+             (request.resource.data.keys().size() == 1 || 
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['creatorPseudo']));
+    }
+    
     // Users collection
     match /users/{userId} {
       allow read: if isSignedIn();
@@ -80,9 +90,18 @@ service cloud.firestore {
       allow create: if isSignedIn() && 
                      isTripMember(request.resource.data.tripId) &&
                      hasValidFields(['title', 'description', 'points', 'tripId', 'creatorId', 'createdAt']);
+      
+      // Simplified quest update rules:
+      // Case 1: Normal case - you're a trip member and either admin or creator
+      // Case 2: Special case - you're the quest creator and only updating your creatorPseudo
       allow update: if isSignedIn() && 
-                     isTripMember(resource.data.tripId) && 
-                     (isAdmin(resource.data.tripId) || resource.data.creatorId == request.auth.uid);
+                     (
+                       (isTripMember(resource.data.tripId) && 
+                        (isAdmin(resource.data.tripId) || resource.data.creatorId == request.auth.uid))
+                       || 
+                       (resource.data.creatorId == request.auth.uid && isOnlyUpdatingCreatorPseudo())
+                     );
+      
       allow delete: if isSignedIn() && 
                      isTripMember(resource.data.tripId) &&
                      (isAdmin(resource.data.tripId) || resource.data.creatorId == request.auth.uid);

@@ -44,4 +44,31 @@ export const loginSchema = z.object({
 /**
  * Type inference for the login form data
  */
-export type LoginFormValues = z.infer<typeof loginSchema>; 
+export type LoginFormValues = z.infer<typeof loginSchema>;
+
+/**
+ * Validation schema for profile updates
+ */
+export const updateProfileSchema = z.object({
+  pseudo: z
+    .string()
+    .min(3, 'Pseudo must be at least 3 characters')
+    .max(20, 'Pseudo cannot exceed 20 characters')
+    .regex(/^[a-zA-Z0-9_]+$/, 'Pseudo can only contain letters, numbers, and underscores'),
+  avatarFile: z
+    .instanceof(File)
+    .optional()
+    .refine(
+      (file) => !file || ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type),
+      'File must be an image (JPEG, PNG, GIF, or WEBP)'
+    )
+    .refine(
+      (file) => !file || file.size <= 5 * 1024 * 1024,
+      'Image must be less than 5MB'
+    )
+});
+
+/**
+ * Type inference for the profile update form data
+ */
+export type UpdateProfileFormValues = z.infer<typeof updateProfileSchema>; 
