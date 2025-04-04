@@ -59,7 +59,7 @@ service cloud.firestore {
     
     // Trips collection
     match /trips/{tripId} {
-      allow read: if isSignedIn() && isTripMember(tripId);
+      allow read: if isSignedIn();
       allow create: if isSignedIn() && 
                      request.resource.data.creatorId == request.auth.uid &&
                      hasValidFields(['name', 'description', 'location', 'startDate', 'endDate', 'creatorId', 'inviteCode', 'createdAt']);
@@ -69,13 +69,14 @@ service cloud.firestore {
       
       // Trip participants subcollection
       match /participants/{participantId} {
-        allow read: if isSignedIn() && isTripMember(tripId);
-        allow create: if isSignedIn() && 
-                       ((isAdmin(tripId) && userExists(participantId)) || 
-                       (participantId == request.auth.uid && 
-                        get(/databases/$(database)/documents/trips/$(tripId)).data.inviteCode == 
-                        request.resource.data.inviteCode &&
-                        hasValidFields(['uid', 'pseudo', 'avatarUrl', 'role', 'joinedAt'])));
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() &&
+                        (
+                          participantId == request.auth.uid && 
+                          request.resource.data.keys().hasOnly(['pseudo', 'avatarUrl', 'role', 'joinedAt']) &&
+                          request.resource.data.role in ['organizer', 'participant'] &&
+                          userExists(request.auth.uid)
+                        )
         allow update: if isSignedIn() && 
                        (isAdmin(tripId) || 
                        (participantId == request.auth.uid && 

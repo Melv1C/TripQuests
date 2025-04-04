@@ -21,13 +21,19 @@ import {
   Dialog,
   Fab,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow
 } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import AddIcon from '@mui/icons-material/Add';
-import { useAtomValue } from 'jotai';
+import { useAtomValue, useSetAtom } from 'jotai';
 import { userDataAtom } from '../store/atoms/authAtoms';
 import { useDocument, useCollection } from '../hooks/useFirestore';
 import { TripDocument, ParticipantData } from '../types/Trip';
@@ -42,7 +48,6 @@ import { PendingSubmissionListItem } from '../components/Submission/PendingSubmi
 import { TripSubmissionListItem } from '../components/Submission/TripSubmissionListItem';
 import { ReviewModal } from '../components/Submission/ReviewModal';
 import { showNotification } from '../store/atoms/notificationAtom';
-import { useSetAtom } from 'jotai';
 import { LeaderboardTable } from '../components/Trip/LeaderboardTable';
 
 export const TripPage: React.FC = () => {
@@ -253,8 +258,6 @@ export const TripPage: React.FC = () => {
   };
   
   // Check if current user is a participant in this trip
-  // - Either through the participants collection
-  // - Or through the participatingTripIds array in user data
   const isUserParticipant = React.useMemo(() => {
     if (!userData || !tripId) return false;
     
@@ -290,6 +293,16 @@ export const TripPage: React.FC = () => {
       return 'Invalid date';
     }
   };
+  
+  // Check if current user is an organizer for this trip
+  const isCurrentUserOrganizer = React.useMemo(() => {
+    if (!userData || !participants) return false;
+    
+    const currentUserParticipant = participants.find(p => p.id === userData.uid);
+    return !!currentUserParticipant && currentUserParticipant.role === 'organizer';
+  }, [userData, participants]);
+
+
   
   // Loading state
   if (isTripLoading) {
@@ -382,6 +395,7 @@ export const TripPage: React.FC = () => {
             <Tab label="Members" />
             <Tab label="Info" />
             <Tab label="Submissions" />
+            {isCurrentUserOrganizer && <Tab label="Admin" />}
           </Tabs>
           
           <Box sx={{ p: 3 }}>
@@ -768,6 +782,74 @@ export const TripPage: React.FC = () => {
                   </>
                 ) : (
                   <Typography variant="body1">No submissions found.</Typography>
+                )}
+              </Box>
+            )}
+            
+            {/* Admin Tab - Visible only to organizers */}
+            {tabValue === 5 && isCurrentUserOrganizer && (
+              <Box>
+                <Typography variant="h6" gutterBottom>
+                  Trip Administration
+                </Typography>
+                
+                <Typography variant="subtitle1" sx={{ mt: 3, mb: 2 }}>
+                  Participant Management
+                </Typography>
+                
+                {isParticipantsLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+                    <CircularProgress size={24} />
+                  </Box>
+                ) : isParticipantsError ? (
+                  <Alert severity="error" sx={{ my: 2 }}>
+                    Error loading participants: {participantsError instanceof Error ? participantsError.message : 'Unknown error'}
+                  </Alert>
+                ) : participants && participants.length > 0 ? (
+                  <TableContainer component={Paper} variant="outlined">
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Participant</TableCell>
+                          <TableCell>Role</TableCell>
+                          <TableCell>Joined Date</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {participants.map((participant) => (
+                          <TableRow key={participant.id}>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Avatar 
+                                  src={participant.avatarUrl || undefined} 
+                                  alt={participant.pseudo}
+                                  sx={{ mr: 2 }}
+                                >
+                                  {participant.pseudo.charAt(0).toUpperCase()}
+                                </Avatar>
+                                <Typography variant="body1">
+                                  {participant.pseudo}
+                                </Typography>
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Chip 
+                                label={participant.role} 
+                                color={participant.role === 'organizer' ? 'primary' : 'default'}
+                                size="small"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              {formatDate(participant.joinedAt)}
+                            </TableCell>
+                            
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                ) : (
+                  <Typography variant="body1">No participants found.</Typography>
                 )}
               </Box>
             )}

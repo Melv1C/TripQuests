@@ -141,11 +141,6 @@ export const CreateQuestForm: React.FC<CreateQuestFormProps> = ({ tripId, onClos
             />
           )}
         />
-        
-        {/* Placeholder for future image upload feature */}
-        <Typography variant="body2" color="text.secondary">
-          Note: Image upload will be available in a future update.
-        </Typography>
       </Stack>
       
       <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>

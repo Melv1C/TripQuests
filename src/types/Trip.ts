@@ -28,7 +28,7 @@ export interface CreateTripFormData {
  * Interface representing a participant in a trip
  */
 export interface ParticipantData {
-  uid: string;
+  id: string;
   pseudo: string;
   avatarUrl: string | null;
   role: 'organizer' | 'participant'; // Role within the trip
