@@ -1,7 +1,9 @@
 import {
     addDoc,
+    arrayRemove,
     arrayUnion,
     collection,
+    deleteDoc,
     doc,
     getDoc,
     getDocs,
@@ -248,3 +250,24 @@ export const getTripsByIds = async (
         throw new Error('Failed to load trips. Please try again later.');
     }
 };
+
+/**
+ * Allows a user to leave a trip
+ *
+ * @param tripId The trip ID to leave
+ * @param userId The user ID of the participant leaving the trip
+ */
+export async function leaveTrip(tripId: string, userId: string): Promise<void> {
+    try {
+        // Delete the participant document
+        await deleteDoc(doc(db, 'trips', tripId, 'participants', userId));
+
+        // Remove the trip ID from the user's participating trips
+        await updateDoc(doc(db, 'users', userId), {
+            participatingTripIds: arrayRemove(tripId),
+        });
+    } catch (error) {
+        console.error('Error leaving trip:', error);
+        throw error;
+    }
+}

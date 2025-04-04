@@ -76,13 +76,12 @@ service cloud.firestore {
                           request.resource.data.keys().hasOnly(['pseudo', 'avatarUrl', 'role', 'joinedAt']) &&
                           request.resource.data.role in ['organizer', 'participant'] &&
                           userExists(request.auth.uid)
-                        )
+                        );
         allow update: if isSignedIn() && 
                        (isAdmin(tripId) || 
                        (participantId == request.auth.uid && 
                         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])));
-        allow delete: if isSignedIn() && 
-                       (isAdmin(tripId) || participantId == request.auth.uid);
+        allow delete: if isSignedIn() && participantId == request.auth.uid;
       }
     }
     
@@ -158,4 +157,4 @@ service cloud.firestore {
       allow read, write: if false;
     }
   }
-} 
+}
