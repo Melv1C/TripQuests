@@ -2,12 +2,9 @@ import React from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { 
   Card, 
-  CardContent, 
-  CardActions, 
+  CardContent,
   Typography, 
-  Button, 
-  Box,
-  Chip
+  Box
 } from '@mui/material';
 import { TripDocument } from '../../types/Trip';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -19,6 +16,7 @@ interface TripCardProps {
 
 /**
  * A reusable card component to display trip summary information
+ * The entire card is clickable and navigates to the trip details
  */
 const TripCard: React.FC<TripCardProps> = ({ trip }) => {
   // Format dates nicely if available
@@ -40,40 +38,57 @@ const TripCard: React.FC<TripCardProps> = ({ trip }) => {
 
   return (
     <Card 
+      component={RouterLink} 
+      to={`/trip/${trip.id}`}
       sx={{ 
+        textDecoration: 'none',
         height: '100%', 
         display: 'flex', 
         flexDirection: 'column',
         transition: 'transform 0.2s, box-shadow 0.2s',
+        border: '1px solid',
+        borderColor: 'divider',
+        backgroundColor: 'background.paper',
+        position: 'relative',
         '&:hover': {
           transform: 'translateY(-4px)',
-          boxShadow: 4
-        }
+          boxShadow: 6,
+          '&:after': {
+            opacity: 1
+          }
+        },
+        cursor: 'pointer'
       }}
     >
-      <CardContent sx={{ flexGrow: 1 }}>
-        <Typography gutterBottom variant="h5" component="div">
+      <CardContent sx={{ flexGrow: 1, p: 3 }}>
+        <Typography 
+          gutterBottom 
+          variant="h5" 
+          component="div" 
+          color="text.primary"
+          fontWeight="500"
+        >
           {trip.name}
         </Typography>
         
         {trip.location && (
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-            <LocationOnIcon color="action" sx={{ mr: 1, fontSize: 18 }} />
-            <Typography variant="body2" color="text.secondary">
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+            <LocationOnIcon color="primary" sx={{ mr: 1, fontSize: 20 }} />
+            <Typography variant="body2" color="text.primary">
               {trip.location}
             </Typography>
           </Box>
         )}
         
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <CalendarTodayIcon color="action" sx={{ mr: 1, fontSize: 18 }} />
-          <Typography variant="body2" color="text.secondary">
+          <CalendarTodayIcon color="primary" sx={{ mr: 1, fontSize: 20 }} />
+          <Typography variant="body2" color="text.primary">
             {dateText}
           </Typography>
         </Box>
         
         {trip.description && (
-          <Typography variant="body2" color="text.secondary" sx={{ 
+          <Typography variant="body2" color="text.primary" sx={{ 
             mb: 1,
             display: '-webkit-box',
             WebkitBoxOrient: 'vertical',
@@ -85,18 +100,6 @@ const TripCard: React.FC<TripCardProps> = ({ trip }) => {
           </Typography>
         )}
       </CardContent>
-      
-      <CardActions>
-        <Button 
-          size="small" 
-          component={RouterLink} 
-          to={`/trip/${trip.id}`}
-          variant="contained"
-          sx={{ ml: 'auto' }}
-        >
-          View Trip
-        </Button>
-      </CardActions>
     </Card>
   );
 };

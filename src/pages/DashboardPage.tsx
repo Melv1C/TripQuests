@@ -9,11 +9,9 @@ import {
   CircularProgress, 
   TextField,
   Button,
-  Divider,
   Alert,
   Snackbar,
-  Skeleton,
-  Stack
+  Skeleton
 } from '@mui/material';
 import { useAtomValue } from 'jotai';
 import { currentUserAtom, userDataAtom, isAuthLoadingAtom } from '../store/atoms/authAtoms';

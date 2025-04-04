@@ -34,6 +34,9 @@ import { where, orderBy } from 'firebase/firestore';
 import { Timestamp } from 'firebase/firestore';
 import CreateQuestForm from '../components/Quest/CreateQuestForm';
 import QuestCard from '../components/Quest/QuestCard';
+import QuestDetailsModal from '../components/Quest/QuestDetailsModal';
+import { showNotification } from '../store/atoms/notificationAtom';
+import { useSetAtom } from 'jotai';
 
 const TripPage: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
@@ -41,6 +44,8 @@ const TripPage: React.FC = () => {
   const userData = useAtomValue(userDataAtom);
   const [copySuccess, setCopySuccess] = React.useState(false);
   const [createQuestDialogOpen, setCreateQuestDialogOpen] = React.useState(false);
+  const [selectedQuest, setSelectedQuest] = React.useState<QuestDocument | null>(null);
+  const setNotification = useSetAtom(showNotification);
   
   // Fetch trip data
   const { 
@@ -101,9 +106,18 @@ const TripPage: React.FC = () => {
     setCreateQuestDialogOpen(false);
   };
 
-  const handleQuestClick = (questId: string) => {
-    // This will be implemented later for quest details view
-    console.log(`View quest details for: ${questId}`);
+  const handleQuestClick = (quest: QuestDocument) => {
+    setSelectedQuest(quest);
+  };
+  
+  const handleCloseQuestDetails = (success?: boolean) => {
+    setSelectedQuest(null);
+    if (success) {
+      setNotification({
+        message: 'Submission received! Pending review.',
+        severity: 'success'
+      });
+    }
   };
   
   // Check if current user is a participant in this trip
@@ -257,7 +271,7 @@ const TripPage: React.FC = () => {
                       <Grid key={quest.id} size={{ xs: 12, sm: 6, md: 4 }}>
                         <QuestCard 
                           quest={quest} 
-                          onClick={() => quest.id && handleQuestClick(quest.id)}
+                          onClick={() => quest.id && handleQuestClick(quest)}
                         />
                       </Grid>
                     ))}
@@ -308,6 +322,15 @@ const TripPage: React.FC = () => {
                     />
                   </Box>
                 </Dialog>
+                
+                {/* Quest Details Modal */}
+                {selectedQuest && (
+                  <QuestDetailsModal
+                    quest={selectedQuest}
+                    open={!!selectedQuest}
+                    onClose={handleCloseQuestDetails}
+                  />
+                )}
               </Box>
             )}
             
