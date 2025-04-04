@@ -46,7 +46,7 @@ const DashboardPage: React.FC = () => {
         </Typography>
         
         <Grid container spacing={3} sx={{ mt: 2 }}>
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Paper elevation={2} sx={{ p: 3, height: '100%' }}>
               <Typography variant="h5" component="h2" gutterBottom>
                 Your Trips
@@ -62,7 +62,7 @@ const DashboardPage: React.FC = () => {
               )}
             </Paper>
           </Grid>
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Paper elevation={2} sx={{ p: 3, height: '100%' }}>
               <Typography variant="h5" component="h2" gutterBottom>
                 Pending Quests

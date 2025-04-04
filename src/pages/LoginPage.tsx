@@ -175,12 +175,12 @@ const LoginPage = () => {
             </Stack>
             
             <Grid container sx={{ mt: 3 }}>
-              <Grid item xs>
+              <Grid size={{ xs: 6 }}>
                 <Link href="#" variant="body2">
                   Forgot password?
                 </Link>
               </Grid>
-              <Grid item>
+              <Grid size={{ xs: 6 }}>
                 <Link component={RouterLink} to="/register" variant="body2">
                   Don't have an account? Sign Up
                 </Link>

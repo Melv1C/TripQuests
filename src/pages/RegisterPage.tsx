@@ -181,7 +181,7 @@ const RegisterPage = () => {
             </Stack>
             
             <Grid container justifyContent="center" sx={{ mt: 3 }}>
-              <Grid item>
+              <Grid size="grow">
                 <Typography variant="body2" color="text.secondary">
                   Already have an account?{' '}
                   <Link component={RouterLink} to="/login" variant="body2">

@@ -1,38 +1,35 @@
-import React from 'react';
-import Box from '@mui/material/Box';
-import FirebaseStatus from './components/FirebaseStatus';
+import { useLocation } from 'react-router-dom';
 import NotificationAlert from './components/NotificationAlert';
 import AuthListener from './components/AuthListener';
+import MainLayout from './components/layout/MainLayout';
 import AppRoutes from './routes';
 
 function App() {
+  // Get the current route to potentially customize layout
+  const location = useLocation();
+  const path = location.pathname;
+  
+  // Determine if we should use the layout based on the route
+  // Currently including layout on all routes, but this can be customized
+  const useMainLayout = true;
+
   return (
     <>
       {/* Auth state listener component */}
       <AuthListener />
       
+      {/* Global notification component */}
       <NotificationAlert />
-      <AppRoutes />
       
-      {/* Only show Firebase status in development */}
-      {import.meta.env.DEV && (
-        <Box sx={{ 
-          position: 'fixed', 
-          bottom: 0, 
-          right: 0, 
-          maxWidth: '100%', 
-          width: 'auto', 
-          m: 2, 
-          p: 2, 
-          bgcolor: 'background.paper', 
-          borderRadius: 1, 
-          boxShadow: 3,
-          opacity: 0.9,
-          zIndex: 1000
-        }}>
-          <FirebaseStatus />
-        </Box>
+      {/* Main content with layout */}
+      {useMainLayout ? (
+        <MainLayout>
+          <AppRoutes />
+        </MainLayout>
+      ) : (
+        <AppRoutes />
       )}
+      
     </>
   );
 }
