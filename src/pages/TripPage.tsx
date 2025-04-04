@@ -27,20 +27,19 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import AddIcon from '@mui/icons-material/Add';
 import { useAtomValue } from 'jotai';
 import { userDataAtom } from '../store/atoms/authAtoms';
-import { useDocument, useCollection, useUpdateDocument } from '../hooks/useFirestore';
+import { useDocument, useCollection } from '../hooks/useFirestore';
 import { TripDocument, ParticipantData } from '../types/Trip';
 import { QuestDocument } from '../types/Quest';
 import { SubmissionDocument } from '../types/Submission';
 import { where, orderBy } from 'firebase/firestore';
 import { Timestamp } from 'firebase/firestore';
-import CreateQuestForm from '../components/Quest/CreateQuestForm';
-import QuestCard from '../components/Quest/QuestCard';
-import QuestDetailsModal from '../components/Quest/QuestDetailsModal';
-import ReviewCard from '../components/Submission/ReviewCard';
+import { CreateQuestForm } from '../components/Quest/CreateQuestForm';
+import { QuestCard } from '../components/Quest/QuestCard';
+import { QuestDetailsModal } from '../components/Quest/QuestDetailsModal';
+import { PendingSubmissionListItem } from '../components/Submission/PendingSubmissionListItem';
+import { ReviewModal } from '../components/Submission/ReviewModal';
 import { showNotification } from '../store/atoms/notificationAtom';
 import { useSetAtom } from 'jotai';
-import { reviewSubmission } from '../services/firestore/submissions';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 const TripPage: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
@@ -50,7 +49,10 @@ const TripPage: React.FC = () => {
   const [createQuestDialogOpen, setCreateQuestDialogOpen] = React.useState(false);
   const [selectedQuest, setSelectedQuest] = React.useState<QuestDocument | null>(null);
   const setNotification = useSetAtom(showNotification);
-  const queryClient = useQueryClient();
+  
+  // Add state for review modal
+  const [isReviewModalOpen, setIsReviewModalOpen] = React.useState(false);
+  const [selectedSubmissionForReview, setSelectedSubmissionForReview] = React.useState<SubmissionDocument | null>(null);
   
   // Fetch trip data
   const { 
@@ -126,51 +128,6 @@ const TripPage: React.FC = () => {
     }, {} as Record<string, QuestDocument>);
   }, [quests]);
 
-  // Review submission mutation
-  const reviewMutation = useMutation({
-    mutationFn: async ({
-      submissionId,
-      questId,
-      decision
-    }: {
-      submissionId: string;
-      questId: string;
-      decision: 'approved' | 'rejected';
-    }) => {
-      if (!userData?.uid) {
-        throw new Error('User must be logged in to review submissions');
-      }
-      return reviewSubmission(submissionId, questId, userData.uid, decision);
-    },
-    onSuccess: (_, variables) => {
-      // Invalidate queries to refresh data
-      queryClient.invalidateQueries({ 
-        queryKey: ['collection', 'submissions'] 
-      });
-      
-      // Show notification
-      setNotification({
-        message: `Submission ${variables.decision === 'approved' ? 'approved' : 'rejected'} successfully!`,
-        severity: variables.decision === 'approved' ? 'success' : 'info'
-      });
-    },
-    onError: (error) => {
-      console.error('Error reviewing submission:', error);
-      setNotification({
-        message: `Error reviewing submission: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        severity: 'error'
-      });
-    }
-  });
-
-  const handleReviewSubmission = (
-    submissionId: string,
-    questId: string,
-    decision: 'approved' | 'rejected'
-  ) => {
-    reviewMutation.mutate({ submissionId, questId, decision });
-  };
-  
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
@@ -203,6 +160,18 @@ const TripPage: React.FC = () => {
         severity: 'success'
       });
     }
+  };
+  
+  // Add handler for opening the review modal
+  const handleOpenReviewModal = (submission: SubmissionDocument) => {
+    setSelectedSubmissionForReview(submission);
+    setIsReviewModalOpen(true);
+  };
+  
+  // Add handler for closing the review modal
+  const handleCloseReviewModal = () => {
+    setIsReviewModalOpen(false);
+    setSelectedSubmissionForReview(null);
   };
   
   // Check if current user is a participant in this trip
@@ -377,7 +346,7 @@ const TripPage: React.FC = () => {
                   </Box>
                 )}
                 
-                {/* Pending Submissions for Review Section */}
+                {/* Pending Submissions for Review Section - Updated to use the new list and modal approach */}
                 {submissionsToReview && submissionsToReview.length > 0 && (
                   <Box sx={{ mt: 4 }}>
                     <Divider sx={{ mb: 3 }} />
@@ -385,7 +354,7 @@ const TripPage: React.FC = () => {
                       Pending Submissions for Review
                     </Typography>
                     
-                    <Grid container spacing={2}>
+                    <List disablePadding>
                       {submissionsToReview.map((submission) => {
                         const quest = submission.questId && questsById[submission.questId];
                         
@@ -394,17 +363,16 @@ const TripPage: React.FC = () => {
                         }
                         
                         return (
-                          <Grid key={submission.id} size={12}>
-                            <ReviewCard
-                              submission={submission}
-                              quest={quest}
-                              onReview={handleReviewSubmission}
-                              isReviewing={reviewMutation.isPending && reviewMutation.variables?.submissionId === submission.id}
-                            />
-                          </Grid>
+                          <PendingSubmissionListItem
+                            key={submission.id}
+                            submission={submission}
+                            questTitle={quest.title}
+                            questPoints={quest.points}
+                            onClick={() => handleOpenReviewModal(submission)}
+                          />
                         );
                       })}
-                    </Grid>
+                    </List>
                   </Box>
                 )}
                 
@@ -473,6 +441,16 @@ const TripPage: React.FC = () => {
                     onClose={handleCloseQuestDetails}
                   />
                 )}
+                
+                {/* Review Modal - New component */}
+                <ReviewModal
+                  open={isReviewModalOpen}
+                  onClose={handleCloseReviewModal}
+                  submission={selectedSubmissionForReview}
+                  quest={selectedSubmissionForReview?.questId 
+                    ? questsById[selectedSubmissionForReview.questId] 
+                    : null}
+                />
               </Box>
             )}
             

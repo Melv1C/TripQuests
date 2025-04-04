@@ -53,7 +53,7 @@ interface QuestDetailsModalProps {
   onClose: (success?: boolean) => void;
 }
 
-const QuestDetailsModal: React.FC<QuestDetailsModalProps> = ({ 
+export const QuestDetailsModal: React.FC<QuestDetailsModalProps> = ({ 
   quest, 
   open, 
   onClose 
@@ -188,5 +188,3 @@ const QuestDetailsModal: React.FC<QuestDetailsModalProps> = ({
     </Dialog>
   );
 };
-
-export default QuestDetailsModal; 

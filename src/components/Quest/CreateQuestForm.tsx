@@ -21,7 +21,7 @@ interface CreateQuestFormProps {
   onClose: () => void;
 }
 
-const CreateQuestForm: React.FC<CreateQuestFormProps> = ({ tripId, onClose }) => {
+export const CreateQuestForm: React.FC<CreateQuestFormProps> = ({ tripId, onClose }) => {
   const userData = useAtomValue(userDataAtom);
   const queryClient = useQueryClient();
   
@@ -164,5 +164,3 @@ const CreateQuestForm: React.FC<CreateQuestFormProps> = ({ tripId, onClose }) =>
     </Box>
   );
 };
-
-export default CreateQuestForm; 

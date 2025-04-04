@@ -20,7 +20,7 @@ interface QuestCardProps {
   onClick?: () => void;
 }
 
-const QuestCard: React.FC<QuestCardProps> = ({ quest, onClick }) => {
+export const QuestCard: React.FC<QuestCardProps> = ({ quest, onClick }) => {
   // Format date helper (handles both Date and Firestore Timestamp)
   const formatDate = (date: Date | Timestamp | null) => {
     if (!date) return null;
@@ -121,5 +121,3 @@ const QuestCard: React.FC<QuestCardProps> = ({ quest, onClick }) => {
     </Card>
   );
 };
-
-export default QuestCard; 
