@@ -24,3 +24,8 @@ dist-ssr
 *.sw?
 
 repomix-output.xml
+
+# Environment variables
+.env
+.env.*
+!.env.example
