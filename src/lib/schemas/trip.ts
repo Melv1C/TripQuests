@@ -43,4 +43,16 @@ export const createTripSchema = z.object({
   }
 );
 
-export type CreateTripFormData = z.infer<typeof createTripSchema>; 
+/**
+ * Zod schema for validating join trip form data
+ */
+export const joinTripSchema = z.object({
+  inviteCode: z
+    .string()
+    .min(6, 'Invite code must be 6 characters')
+    .max(6, 'Invite code must be 6 characters')
+    .regex(/^[A-Z0-9]+$/, 'Invite code must contain only uppercase letters and numbers')
+});
+
+export type CreateTripFormData = z.infer<typeof createTripSchema>;
+export type JoinTripFormData = z.infer<typeof joinTripSchema>; 
