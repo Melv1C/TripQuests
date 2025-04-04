@@ -46,7 +46,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isSignedIn();
       allow create: if isOwner(userId) && 
-                     hasValidFields(['displayName', 'email', 'photoURL', 'createdAt']);
+                     hasValidFields(['pseudo', 'email', 'avatarUrl', 'createdAt', 'participatingTripIds']);
       allow update: if isOwner(userId) && 
                      (!request.resource.data.diff(resource.data).affectedKeys()
                        .hasAny(['email', 'createdAt']) || 
@@ -62,7 +62,7 @@ service cloud.firestore {
       allow read: if isSignedIn() && isTripMember(tripId);
       allow create: if isSignedIn() && 
                      request.resource.data.creatorId == request.auth.uid &&
-                     hasValidFields(['name', 'description', 'startDate', 'endDate', 'creatorId', 'createdAt']);
+                     hasValidFields(['name', 'description', 'location', 'startDate', 'endDate', 'creatorId', 'inviteCode', 'createdAt']);
       allow update: if isSignedIn() && (isAdmin(tripId) || 
                     (resource.data.creatorId == request.auth.uid));
       allow delete: if isSignedIn() && resource.data.creatorId == request.auth.uid;
@@ -74,7 +74,8 @@ service cloud.firestore {
                        ((isAdmin(tripId) && userExists(participantId)) || 
                        (participantId == request.auth.uid && 
                         get(/databases/$(database)/documents/trips/$(tripId)).data.inviteCode == 
-                        request.resource.data.inviteCode));
+                        request.resource.data.inviteCode &&
+                        hasValidFields(['uid', 'pseudo', 'avatarUrl', 'role', 'joinedAt'])));
         allow update: if isSignedIn() && 
                        (isAdmin(tripId) || 
                        (participantId == request.auth.uid && 
@@ -89,7 +90,8 @@ service cloud.firestore {
       allow read: if isSignedIn() && isTripMember(resource.data.tripId);
       allow create: if isSignedIn() && 
                      isTripMember(request.resource.data.tripId) &&
-                     hasValidFields(['title', 'description', 'points', 'tripId', 'creatorId', 'createdAt']);
+                     hasValidFields(['title', 'description', 'tripId', 'creatorId', 'creatorPseudo', 'questType', 
+                                     'points', 'deadline', 'imageUrl', 'createdAt', 'isActive']);
       
       // Simplified quest update rules:
       // Case 1: Normal case - you're a trip member and either admin or creator
@@ -113,7 +115,12 @@ service cloud.firestore {
       allow create: if isSignedIn() && 
                      isTripMember(request.resource.data.tripId) &&
                      request.resource.data.submitterId == request.auth.uid &&
-                     hasValidFields(['questId', 'tripId', 'submitterId', 'submitterPseudo', 'evidence', 'status', 'submittedAt']);
+                     hasValidFields(['questId', 'tripId', 'submitterId', 'submitterPseudo', 'evidence', 
+                                     'status', 'submittedAt', 'pointsAwarded', 'reviewedAt', 'reviewerId']) &&
+                     request.resource.data.status == 'pending' &&
+                     request.resource.data.pointsAwarded == 0 &&
+                     request.resource.data.reviewedAt == null &&
+                     request.resource.data.reviewerId == null;
       allow update: if isSignedIn() && 
                      isTripMember(resource.data.tripId) &&
                      (
@@ -121,9 +128,13 @@ service cloud.firestore {
                        (resource.data.submitterId == request.auth.uid && 
                         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'reviewerId', 'reviewedAt', 'pointsAwarded']))
                        ||
-                       // Case 2: User is reviewing someone else's submission
+                       // Case 2: User is reviewing someone else's submission (Single Approval Logic)
                        (resource.data.submitterId != request.auth.uid && 
-                        request.resource.data.reviewerId == request.auth.uid)
+                        resource.data.status == 'pending' &&
+                        request.resource.data.reviewerId == request.auth.uid &&
+                        request.resource.data.status in ['approved', 'rejected'] &&
+                        (request.resource.data.status == 'rejected' ? request.resource.data.pointsAwarded == 0 : true) &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasAll(['status', 'reviewerId', 'reviewedAt', 'pointsAwarded']))
                        ||
                        // Case 3: User is an admin
                        isAdmin(resource.data.tripId)
