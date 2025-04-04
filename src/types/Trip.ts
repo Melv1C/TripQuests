@@ -23,3 +23,14 @@ export interface CreateTripFormData {
   startDate: string; // Use string for form inputs initially
   endDate: string; // Use string for form inputs initially
 }
+
+/**
+ * Interface representing a participant in a trip
+ */
+export interface ParticipantData {
+  uid: string;
+  pseudo: string;
+  avatarUrl: string | null;
+  role: 'organizer' | 'participant'; // Role within the trip
+  joinedAt: Date | null;
+}
