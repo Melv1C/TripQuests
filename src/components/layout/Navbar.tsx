@@ -92,21 +92,38 @@ export const Navbar = () => {
       <Container maxWidth="xl">
         <Toolbar disableGutters>
           {/* Logo - Desktop */}
-          <Typography
-            variant="h6"
-            noWrap
+          <Box
             component={RouterLink}
             to="/"
             sx={{
               mr: 2,
               display: { xs: 'none', md: 'flex' },
-              fontWeight: 700,
-              color: 'inherit',
+              alignItems: 'center',
               textDecoration: 'none',
+              color: 'inherit',
             }}
           >
-            TripQuest
-          </Typography>
+            <Box
+              component="img"
+              src="/icon.png"
+              alt="TripQuest Logo"
+              sx={{
+                height: 32,
+                width: 32,
+                mr: 1,
+                borderRadius: 1,
+              }}
+            />
+            <Typography
+              variant="h6"
+              noWrap
+              sx={{
+                fontWeight: 700,
+              }}
+            >
+              TripQuest
+            </Typography>
+          </Box>
 
           {/* Mobile Menu */}
           <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
@@ -177,22 +194,39 @@ export const Navbar = () => {
           </Box>
 
           {/* Logo - Mobile */}
-          <Typography
-            variant="h6"
-            noWrap
+          <Box
             component={RouterLink}
             to="/"
             sx={{
               mr: 2,
               display: { xs: 'flex', md: 'none' },
               flexGrow: 1,
-              fontWeight: 700,
-              color: 'inherit',
+              alignItems: 'center',
               textDecoration: 'none',
+              color: 'inherit',
             }}
           >
-            TripQuest
-          </Typography>
+            <Box
+              component="img"
+              src="/icon.png"
+              alt="TripQuest Logo"
+              sx={{
+                height: 28,
+                width: 28,
+                mr: 1,
+                borderRadius: 1,
+              }}
+            />
+            <Typography
+              variant="h6"
+              noWrap
+              sx={{
+                fontWeight: 700,
+              }}
+            >
+              TripQuest
+            </Typography>
+          </Box>
 
           {/* Desktop Navigation */}
           <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>

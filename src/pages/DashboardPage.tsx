@@ -182,7 +182,7 @@ export const DashboardPage: React.FC = () => {
         </Typography>
         
         <Grid container spacing={3} sx={{ mt: 2 }}>
-          <Grid size={{ xs: 12, md: 8 }}>
+          <Grid size={12}>
             <Paper elevation={2} sx={{ p: 3, height: '100%' }}>
               <Typography variant="h5" component="h2" gutterBottom>
                 Your Trips
@@ -198,16 +198,6 @@ export const DashboardPage: React.FC = () => {
                   Create New Trip
                 </Button>
               </Box>
-            </Paper>
-          </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <Paper elevation={2} sx={{ p: 3, height: '100%' }}>
-              <Typography variant="h5" component="h2" gutterBottom>
-                Pending Quests
-              </Typography>
-              <Typography variant="body2">
-                Your pending quests will be displayed here. This is a placeholder for the quests list.
-              </Typography>
             </Paper>
           </Grid>
           

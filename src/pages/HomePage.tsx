@@ -112,46 +112,84 @@ export const HomePage = () => {
   }
 
   return (
-    <Box>
+    <Box 
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        mb: 10,
+      }}
+    >
       {/* Hero Section */}
-      <Paper
-        elevation={0}
+      <Box
         sx={{
           position: 'relative',
-          backgroundColor: 'primary.light',
-          color: 'primary.contrastText',
-          mb: 4,
-          pb: 6,
-          pt: { xs: 6, md: 8 },
-          borderRadius: 0,
+          background: 'linear-gradient(to bottom, #ffffff, #f8f8f8)',
+          mb: 6,
+          pb: 4,
+          pt: { xs: 4, md: 6 },
+          borderBottom: '1px solid rgba(0,0,0,0.05)',
         }}
       >
         <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1 }}>
           <Stack spacing={4} alignItems="center" textAlign="center">
-            <Typography
-              component="h1"
-              variant="h2"
-              color="inherit"
-              fontWeight="bold"
-              gutterBottom
+            {/* App Icon and Title in same row on larger screens */}
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                flexDirection: { xs: 'column', sm: 'row' }, 
+                alignItems: 'center',
+                justifyContent: { sm: 'center' },
+                gap: { xs: 3, sm: 4 },
+                width: '100%'
+              }}
             >
-              Welcome to TripQuest
-            </Typography>
+              <Box
+                component="img"
+                src="/icon.png"
+                alt="TripQuest Logo"
+                sx={{
+                  width: { xs: 80, sm: 100, md: 120 },
+                  height: { xs: 80, sm: 100, md: 120 },
+                  mb: { xs: 2, sm: 0 },
+                  borderRadius: 3,
+                  boxShadow: '0 6px 16px rgba(0,0,0,0.1)',
+                }}
+              />
+              <Box sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
+                <Typography
+                  component="h1"
+                  variant="h3"
+                  color="text.primary"
+                  fontWeight="bold"
+                  sx={{ mb: 2 }}
+                >
+                  Welcome to TripQuest
+                </Typography>
+                
+                <Typography
+                  variant="body1"
+                  color="text.secondary"
+                  sx={{ maxWidth: '600px' }}
+                >
+                  Transform your travels into exciting adventures with gamified quests and challenges
+                </Typography>
+              </Box>
+            </Box>
             
-            <Typography
-              variant="h5"
-              color="inherit"
-              paragraph
-              sx={{ maxWidth: '800px', opacity: 0.9 }}
-            >
-              Transform your travels into exciting adventures with gamified quests and challenges
-            </Typography>
+            {/* Welcome message for logged in users */}
+            {userData && (
+              <Typography variant="subtitle1" color="primary" sx={{ m: 0 }}>
+                Welcome back, {userData.pseudo}!
+              </Typography>
+            )}
             
             {/* Call to action buttons - conditional based on auth state */}
             <Stack
               direction={{ xs: 'column', sm: 'row' }}
-              spacing={2}
+              spacing={3}
               justifyContent="center"
+              sx={{ mt: { xs: 2, sm: 3 } }}
             >
               {!currentUser ? (
                 // Not logged in - show auth buttons
@@ -161,7 +199,7 @@ export const HomePage = () => {
                     to="/register"
                     variant="contained"
                     size="large"
-                    color="secondary"
+                    color="primary"
                     sx={{ fontWeight: 'bold', px: 4, py: 1.5 }}
                   >
                     Get Started
@@ -171,17 +209,11 @@ export const HomePage = () => {
                     to="/login"
                     variant="outlined"
                     size="large"
+                    color="primary"
                     sx={{ 
                       fontWeight: 'bold', 
                       px: 4, 
-                      py: 1.5, 
-                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                      borderColor: 'white',
-                      color: 'white',
-                      '&:hover': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                        borderColor: 'white',
-                      },
+                      py: 1.5,
                     }}
                   >
                     Sign In
@@ -195,9 +227,9 @@ export const HomePage = () => {
                     to="/dashboard"
                     variant="contained"
                     size="large"
-                    color="secondary"
+                    color="primary"
                     startIcon={<ExploreIcon />}
-                    sx={{ fontWeight: 'bold', px: 4, py: 1.5 }}
+                    sx={{ fontWeight: 'bold', px: 3, py: 1 }}
                   >
                     Your Dashboard
                   </Button>
@@ -206,18 +238,12 @@ export const HomePage = () => {
                     to="/create-trip"
                     variant="outlined"
                     size="large"
+                    color="primary"
                     startIcon={<AddIcon />}
                     sx={{ 
                       fontWeight: 'bold', 
-                      px: 4, 
-                      py: 1.5, 
-                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                      borderColor: 'white',
-                      color: 'white',
-                      '&:hover': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                        borderColor: 'white',
-                      },
+                      px: 3, 
+                      py: 1,
                     }}
                   >
                     Create Trip
@@ -225,24 +251,17 @@ export const HomePage = () => {
                 </>
               )}
             </Stack>
-            
-            {/* Welcome message for logged in users */}
-            {userData && (
-              <Typography variant="h6" color="inherit" sx={{ mt: 2 }}>
-                Welcome back, {userData.pseudo}!
-              </Typography>
-            )}
           </Stack>
         </Container>
-      </Paper>
+      </Box>
 
       {/* Features Section */}
-      <Container maxWidth="md" sx={{ mb: 8 }}>
-        <Typography variant="h4" component="h2" sx={{ mb: 4, textAlign: 'center' }}>
+      <Container maxWidth="md">
+        <Typography variant="h4" component="h2" sx={{ mb: 5, textAlign: 'center' }}>
           Make Your Travels Unforgettable
         </Typography>
         
-        <Grid container spacing={4}>
+        <Grid container spacing={6}>
           {features.map((feature, index) => (
             <Grid key={index} size={{ xs: 12, sm: 6, md: 4 }}>
               <FeatureCard
@@ -253,18 +272,22 @@ export const HomePage = () => {
             </Grid>
           ))}
         </Grid>
+      </Container>
+
+
         
-        {/* How it works section */}
-        <Box sx={{ mt: 8 }}>
-          <Typography variant="h4" component="h2" sx={{ mb: 4, textAlign: 'center' }}>
+      {/* How it works section */}
+      <Container maxWidth="md">
+        <Box sx={{ mt: 10 }}>
+          <Typography variant="h4" component="h2" sx={{ mb: 5, textAlign: 'center' }}>
             How It Works
           </Typography>
           
-          <Paper elevation={1} sx={{ p: 3, borderRadius: 2 }}>
-            <Grid container spacing={2}>
+          <Paper elevation={1} sx={{ p: 4, borderRadius: 2 }}>
+            <Grid container spacing={4}>
               <Grid size={{ xs: 12, md: 4 }}>
-                <Box sx={{ p: 2, textAlign: 'center' }}>
-                  <Typography variant="h6" gutterBottom>
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
                     1. Create a Trip
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
@@ -276,7 +299,7 @@ export const HomePage = () => {
               <Grid size={{ xs: 12, md: 4 }}>
                 <Box sx={{ 
                   position: 'relative',
-                  p: 2, 
+                  p: 3, 
                   textAlign: 'center',
                   '&::before': {
                     content: '""',
@@ -295,7 +318,7 @@ export const HomePage = () => {
                     display: { xs: 'none', md: 'block' }
                   }
                 }}>
-                  <Typography variant="h6" gutterBottom>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
                     2. Create Quests
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
@@ -307,7 +330,7 @@ export const HomePage = () => {
               <Grid size={{ xs: 12, md: 4 }}>
                 <Box sx={{ 
                   position: 'relative',
-                  p: 2, 
+                  p: 3, 
                   textAlign: 'center',
                   '&::before': {
                     content: '""',
@@ -326,7 +349,7 @@ export const HomePage = () => {
                     display: { xs: 'none', md: 'block' }
                   }
                 }}>
-                  <Typography variant="h6" gutterBottom>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
                     3. Complete & Review
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
