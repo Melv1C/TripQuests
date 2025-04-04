@@ -1,11 +1,13 @@
 import React from 'react';
 import Box from '@mui/material/Box';
 import FirebaseStatus from './components/FirebaseStatus';
+import NotificationAlert from './components/NotificationAlert';
 import AppRoutes from './routes';
 
 function App() {
   return (
     <>
+      <NotificationAlert />
       <AppRoutes />
       
       {/* Only show Firebase status in development */}
