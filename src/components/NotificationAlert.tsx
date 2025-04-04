@@ -5,7 +5,7 @@ import { notificationAtom } from '../store/atoms/notificationAtom';
 /**
  * A reusable notification component that displays alerts based on the global notification atom
  */
-const NotificationAlert = () => {
+export const NotificationAlert = () => {
   const [notification, setNotification] = useAtom(notificationAtom);
   
   // Handle notification close
@@ -34,5 +34,3 @@ const NotificationAlert = () => {
     </Snackbar>
   );
 };
-
-export default NotificationAlert; 

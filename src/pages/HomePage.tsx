@@ -70,7 +70,7 @@ const FeatureCard = ({ title, description, icon }: FeatureCardProps) => {
 };
 
 // Main HomePage component
-const HomePage = () => {
+export const HomePage = () => {
   // Get auth state from Jotai
   const currentUser = useAtomValue(currentUserAtom);
   const userData = useAtomValue(userDataAtom);
@@ -341,5 +341,3 @@ const HomePage = () => {
     </Box>
   );
 };
-
-export default HomePage; 

@@ -35,7 +35,7 @@ import { signOut } from '../../services/auth';
  * Main navigation bar component
  * Shows different options based on authentication state
  */
-const Navbar = () => {
+export const Navbar = () => {
   const navigate = useNavigate();
   
   // Get authentication state
@@ -318,5 +318,3 @@ const Navbar = () => {
     </AppBar>
   );
 };
-
-export default Navbar; 

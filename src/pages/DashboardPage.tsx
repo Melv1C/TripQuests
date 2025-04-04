@@ -22,7 +22,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getTripsByIds, joinTripByInviteCode } from '../services/firestore/trips';
 import TripCard from '../components/Trip/TripCard';
 
-const DashboardPage: React.FC = () => {
+export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const currentUser = useAtomValue(currentUserAtom);
   const userData = useAtomValue(userDataAtom);
@@ -272,5 +272,3 @@ const DashboardPage: React.FC = () => {
     </Container>
   );
 };
-
-export default DashboardPage; 

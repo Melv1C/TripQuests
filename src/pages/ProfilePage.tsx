@@ -5,7 +5,7 @@ import { useAtomValue } from 'jotai';
 import { currentUserAtom, userDataAtom, isAuthLoadingAtom } from '../store/atoms/authAtoms';
 import { signOut } from '../services/auth';
 
-const ProfilePage: React.FC = () => {
+export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const currentUser = useAtomValue(currentUserAtom);
   const userData = useAtomValue(userDataAtom);
@@ -81,5 +81,3 @@ const ProfilePage: React.FC = () => {
     </Container>
   );
 };
-
-export default ProfilePage; 

@@ -2,7 +2,7 @@ import React from 'react';
 import { Container, Typography, Box, Button, Paper } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 
-const NotFoundPage: React.FC = () => {
+export const NotFoundPage: React.FC = () => {
   return (
     <Container maxWidth="sm">
       <Box sx={{ my: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -30,5 +30,3 @@ const NotFoundPage: React.FC = () => {
     </Container>
   );
 };
-
-export default NotFoundPage; 

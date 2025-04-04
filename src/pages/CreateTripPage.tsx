@@ -21,7 +21,7 @@ import { useMutation } from '@tanstack/react-query';
 import { createTrip } from '../services/firestore/trips';
 import { CreateTripFormData } from '../types/Trip';
 
-const CreateTripPage: React.FC = () => {
+export const CreateTripPage: React.FC = () => {
   const navigate = useNavigate();
   const userData = useAtomValue(userDataAtom);
   const [openSnackbar, setOpenSnackbar] = React.useState(false);
@@ -178,5 +178,3 @@ const CreateTripPage: React.FC = () => {
     </Container>
   );
 };
-
-export default CreateTripPage; 

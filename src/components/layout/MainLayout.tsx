@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { Box, Container } from '@mui/material';
-import Navbar from './Navbar';
+import { Navbar } from './Navbar';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -14,7 +14,7 @@ interface MainLayoutProps {
  * @param maxWidth Optional MUI Container maxWidth prop (default: 'lg')
  * @param withContainer Whether to wrap content in a Container (default: true)
  */
-const MainLayout = ({ 
+export const MainLayout = ({ 
   children, 
   maxWidth = 'lg',
   withContainer = true 
@@ -37,5 +37,3 @@ const MainLayout = ({
     </Box>
   );
 };
-
-export default MainLayout; 

@@ -1,7 +1,7 @@
-import NotificationAlert from './components/NotificationAlert';
-import AuthListener from './components/AuthListener';
-import MainLayout from './components/layout/MainLayout';
-import AppRoutes from './routes';
+import { NotificationAlert } from './components/NotificationAlert';
+import { AuthListener } from './components/AuthListener';
+import { MainLayout } from './components/layout/MainLayout';
+import { AppRoutes } from './routes';
 
 function App() {
   // Currently including layout on all routes

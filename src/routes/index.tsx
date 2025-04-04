@@ -2,19 +2,19 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 
 // Import route components
-import ProtectedRoute from './ProtectedRoute';
+import { ProtectedRoute } from './ProtectedRoute';
 
 // Import page components
-import HomePage from '../pages/HomePage';
-import LoginPage from '../pages/LoginPage';
-import RegisterPage from '../pages/RegisterPage';
-import DashboardPage from '../pages/DashboardPage';
-import TripPage from '../pages/TripPage';
-import CreateTripPage from '../pages/CreateTripPage';
-import ProfilePage from '../pages/ProfilePage';
-import NotFoundPage from '../pages/NotFoundPage';
+import { HomePage } from '../pages/HomePage';
+import { LoginPage } from '../pages/LoginPage';
+import { RegisterPage } from '../pages/RegisterPage';
+import { DashboardPage } from '../pages/DashboardPage';
+import { TripPage } from '../pages/TripPage';
+import { CreateTripPage } from '../pages/CreateTripPage';
+import { ProfilePage } from '../pages/ProfilePage';
+import { NotFoundPage } from '../pages/NotFoundPage';
 
-const AppRoutes: React.FC = () => {
+export const AppRoutes: React.FC = () => {
   return (
     <Routes>
       {/* Public routes */}
@@ -61,5 +61,3 @@ const AppRoutes: React.FC = () => {
     </Routes>
   );
 };
-
-export default AppRoutes; 

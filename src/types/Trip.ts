@@ -34,3 +34,14 @@ export interface ParticipantData {
   role: 'organizer' | 'participant'; // Role within the trip
   joinedAt: Date | null;
 }
+
+/**
+ * Interface representing a leaderboard entry for a trip
+ */
+export interface LeaderboardEntry {
+  rank: number;
+  userId: string;
+  pseudo: string;
+  avatarUrl: string | null;
+  totalPoints: number;
+}

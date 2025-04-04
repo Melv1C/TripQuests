@@ -12,7 +12,7 @@ import { currentUserAtom, userDataAtom, isAuthLoadingAtom } from '../store/atoms
  * 
  * This component doesn't render any UI.
  */
-const AuthListener = () => {
+export const AuthListener = () => {
   // Get the setter functions for the auth atoms
   const setCurrentUser = useSetAtom(currentUserAtom);
   const setUserData = useSetAtom(userDataAtom);
@@ -66,5 +66,3 @@ const AuthListener = () => {
   // This component doesn't render anything
   return null;
 };
-
-export default AuthListener; 

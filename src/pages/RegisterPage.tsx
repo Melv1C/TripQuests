@@ -28,7 +28,7 @@ import PasswordField from '../components/form/PasswordField';
 import { registerSchema, RegisterFormValues } from '../lib/schemas/auth';
 import { registerUser } from '../services/auth';
 
-const RegisterPage = () => {
+export const RegisterPage = () => {
   const navigate = useNavigate();
   const [generalError, setGeneralError] = useState<string | null>(null);
   
@@ -196,5 +196,3 @@ const RegisterPage = () => {
     </Container>
   );
 };
-
-export default RegisterPage; 

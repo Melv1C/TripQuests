@@ -12,7 +12,7 @@ interface ProtectedRouteProps {
  * A wrapper component for routes that require authentication.
  * Redirects to the login page if the user is not authenticated.
  */
-const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
+export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const currentUser = useAtomValue(currentUserAtom);
   const isAuthLoading = useAtomValue(isAuthLoadingAtom);
   const location = useLocation();
@@ -34,5 +34,3 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   // If authenticated, render the children
   return <>{children}</>;
 };
-
-export default ProtectedRoute; 

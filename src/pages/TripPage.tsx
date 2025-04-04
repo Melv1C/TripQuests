@@ -40,8 +40,9 @@ import { PendingSubmissionListItem } from '../components/Submission/PendingSubmi
 import { ReviewModal } from '../components/Submission/ReviewModal';
 import { showNotification } from '../store/atoms/notificationAtom';
 import { useSetAtom } from 'jotai';
+import { LeaderboardTable } from '../components/Trip/LeaderboardTable';
 
-const TripPage: React.FC = () => {
+export const TripPage: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
   const [tabValue, setTabValue] = React.useState(0);
   const userData = useAtomValue(userDataAtom);
@@ -109,6 +110,22 @@ const TripPage: React.FC = () => {
     { enabled: !!tripId }
   );
 
+  // Fetch approved submissions for leaderboard
+  const {
+    data: approvedSubmissions,
+    isLoading: isApprovedSubmissionsLoading,
+    isError: isApprovedSubmissionsError,
+    error: approvedSubmissionsError
+  } = useCollection<SubmissionDocument>(
+    'submissions',
+    [
+      where('tripId', '==', tripId || ''),
+      where('status', '==', 'approved'),
+      orderBy('submittedAt', 'desc')
+    ],
+    { enabled: !!tripId }
+  );
+
   // Filter out user's own submissions
   const submissionsToReview = React.useMemo(() => {
     if (!pendingSubmissions || !userData) return [];
@@ -127,6 +144,56 @@ const TripPage: React.FC = () => {
       return acc;
     }, {} as Record<string, QuestDocument>);
   }, [quests]);
+
+  // Calculate leaderboard data
+  const leaderboardData = React.useMemo(() => {
+    if (!participants || !approvedSubmissions) return [];
+
+    // Initialize points map
+    const pointsMap: Record<string, number> = {};
+    
+    // Sum up points for each user from approved submissions
+    approvedSubmissions.forEach(submission => {
+      if (!pointsMap[submission.submitterId]) {
+        pointsMap[submission.submitterId] = 0;
+      }
+      pointsMap[submission.submitterId] += submission.pointsAwarded;
+    });
+    
+    // Create leaderboard entries
+    let entries = participants.map(participant => ({
+      userId: participant.uid,
+      pseudo: participant.pseudo,
+      avatarUrl: participant.avatarUrl,
+      totalPoints: pointsMap[participant.uid] || 0,
+      rank: 0 // Placeholder, will be calculated after sorting
+    }));
+    
+    // Sort by points (descending)
+    entries.sort((a, b) => b.totalPoints - a.totalPoints);
+    
+    // Assign ranks (handling ties)
+    let currentRank = 1;
+    let currentPoints = -1;
+    let skipCount = 0;
+    
+    entries = entries.map((entry) => {
+      if (entry.totalPoints !== currentPoints) {
+        currentRank = currentRank + skipCount;
+        skipCount = 0;
+        currentPoints = entry.totalPoints;
+      } else {
+        skipCount++;
+      }
+      
+      return {
+        ...entry,
+        rank: currentRank
+      };
+    });
+    
+    return entries;
+  }, [participants, approvedSubmissions]);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -296,7 +363,8 @@ const TripPage: React.FC = () => {
             onChange={handleTabChange} 
             indicatorColor="primary"
             textColor="primary"
-            variant="fullWidth"
+            variant="scrollable"
+            scrollButtons="auto"
           >
             <Tab label="Quests" />
             <Tab label="Leaderboard" />
@@ -455,9 +523,29 @@ const TripPage: React.FC = () => {
             )}
             
             {tabValue === 1 && (
-              <Typography variant="body1">
-                Leaderboard tab content will appear here. This is a placeholder.
-              </Typography>
+              <Box>
+                <Typography variant="h6" gutterBottom>
+                  Leaderboard
+                </Typography>
+                
+                {isParticipantsLoading || isApprovedSubmissionsLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+                    <CircularProgress />
+                  </Box>
+                ) : isParticipantsError || isApprovedSubmissionsError ? (
+                  <Alert severity="error" sx={{ my: 2 }}>
+                    Error loading leaderboard data: {
+                      (isParticipantsError && participantsError instanceof Error) 
+                        ? participantsError.message 
+                        : (isApprovedSubmissionsError && approvedSubmissionsError instanceof Error)
+                          ? approvedSubmissionsError.message
+                          : 'Unknown error'
+                    }
+                  </Alert>
+                ) : (
+                  <LeaderboardTable leaderboardData={leaderboardData} />
+                )}
+              </Box>
             )}
             
             {tabValue === 2 && (
@@ -563,5 +651,3 @@ const TripPage: React.FC = () => {
     </Container>
   );
 };
-
-export default TripPage; 

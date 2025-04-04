@@ -30,7 +30,7 @@ import { loginSchema, LoginFormValues } from '../lib/schemas/auth';
 import { signIn } from '../services/auth';
 import { currentUserAtom, isAuthLoadingAtom } from '../store/atoms/authAtoms';
 
-const LoginPage = () => {
+export const LoginPage = () => {
   const navigate = useNavigate();
   const [generalError, setGeneralError] = useState<string | null>(null);
   
@@ -192,5 +192,3 @@ const LoginPage = () => {
     </Container>
   );
 };
-
-export default LoginPage; 
