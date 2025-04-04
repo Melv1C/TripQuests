@@ -23,11 +23,14 @@ const PasswordField = ({
     setShowPassword((prev) => !prev);
   };
 
+  // Convert label to string for autoComplete
+  const autoCompleteValue = typeof label === 'string' ? label.toLowerCase() : 'current-password';
+
   return (
     <TextField
       label={label}
       type={showPassword ? 'text' : 'password'}
-      autoComplete={label.toLowerCase()}
+      autoComplete={autoCompleteValue}
       {...textFieldProps}
       InputProps={{
         ...textFieldProps.InputProps,

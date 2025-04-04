@@ -7,9 +7,6 @@ import {
   where, 
   QueryConstraint,
   DocumentData,
-  DocumentReference,
-  CollectionReference,
-  Query,
   WhereFilterOp
 } from 'firebase/firestore';
 import { db } from '../config/firebase';

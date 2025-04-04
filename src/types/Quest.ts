@@ -23,5 +23,5 @@ export interface QuestFormData {
   title: string;
   description: string;
   points: number;
-  deadline: string; // Use string for form inputs initially
+  deadline?: string; // Optional string for form inputs
 }

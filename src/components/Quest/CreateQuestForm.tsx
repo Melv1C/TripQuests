@@ -12,10 +12,9 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAtomValue } from 'jotai';
-import { questSchema } from '../../lib/schemas/quest';
+import { questSchema, QuestFormSchema } from '../../lib/schemas/quest';
 import { userDataAtom } from '../../store/atoms/authAtoms';
 import { createQuest } from '../../services/firestore/quests';
-import { QuestFormData } from '../../types/Quest';
 
 interface CreateQuestFormProps {
   tripId: string;
@@ -30,7 +29,7 @@ const CreateQuestForm: React.FC<CreateQuestFormProps> = ({ tripId, onClose }) =>
     control, 
     handleSubmit, 
     formState: { errors } 
-  } = useForm<QuestFormData>({
+  } = useForm<QuestFormSchema>({
     resolver: zodResolver(questSchema),
     defaultValues: {
       title: '',
@@ -42,7 +41,7 @@ const CreateQuestForm: React.FC<CreateQuestFormProps> = ({ tripId, onClose }) =>
   
   // Create quest mutation
   const { mutate, isPending, isError, error } = useMutation({
-    mutationFn: (data: QuestFormData) => 
+    mutationFn: (data: QuestFormSchema) => 
       createQuest(
         data, 
         tripId, 
@@ -56,7 +55,7 @@ const CreateQuestForm: React.FC<CreateQuestFormProps> = ({ tripId, onClose }) =>
     }
   });
   
-  const onSubmit = (data: QuestFormData) => {
+  const onSubmit = (data: QuestFormSchema) => {
     if (!userData) {
       return; // Should not happen if UI properly restricts access
     }

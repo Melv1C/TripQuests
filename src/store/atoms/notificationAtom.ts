@@ -23,7 +23,7 @@ export const notificationAtom = atom<NotificationState>(initialState);
 // Action to show a notification
 export const showNotification = atom(
   null, // read value - not needed for this action
-  (get, set, update: Omit<NotificationState, 'open'>) => {
+  (_get, set, update: Omit<NotificationState, 'open'>) => {
     set(notificationAtom, {
       ...update,
       open: true,

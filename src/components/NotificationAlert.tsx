@@ -1,6 +1,6 @@
 import { Alert, AlertProps, Snackbar } from '@mui/material';
 import { useAtom } from 'jotai';
-import { notificationAtom, hideNotification } from '../store/atoms/notificationAtom';
+import { notificationAtom } from '../store/atoms/notificationAtom';
 
 /**
  * A reusable notification component that displays alerts based on the global notification atom

@@ -18,10 +18,10 @@ export interface TripDocument {
  */
 export interface CreateTripFormData {
   name: string;
-  description: string;
-  location: string;
-  startDate: string; // Use string for form inputs initially
-  endDate: string; // Use string for form inputs initially
+  description?: string;
+  location?: string;
+  startDate: string;
+  endDate: string;
 }
 
 /**
