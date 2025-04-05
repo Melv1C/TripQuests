@@ -19,9 +19,10 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/trips/$(tripId)/participants/$(request.auth.uid));
     }
     
+    // Helper function to check if user is trip organizer
     function isAdmin(tripId) {
-      return isSignedIn() && 
-        get(/databases/$(database)/documents/trips/$(tripId)/participants/$(request.auth.uid)).data.role == 'organizer';
+      let tripParticipantRef = /databases/$(database)/documents/trips/$(tripId)/participants/$(request.auth.uid);
+      return exists(tripParticipantRef) && get(tripParticipantRef).data.role == 'organizer';
     }
     
     function unchanged(field) {
@@ -77,10 +78,15 @@ service cloud.firestore {
                           request.resource.data.role in ['organizer', 'participant'] &&
                           userExists(request.auth.uid)
                         );
-        allow update: if isSignedIn() && 
-                       (isAdmin(tripId) || 
-                       (participantId == request.auth.uid && 
-                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])));
+        allow update: if 
+          // Case 1: Self-update for basic profile info
+          (isSignedIn() && request.auth.uid == participantId) ||
+          // Case 2: Organizer updating role (existing logic)
+          (isAdmin(tripId)) || 
+          // Case 3: Organizer adjusting points (new logic)
+          (isAdmin(tripId) && 
+           request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['manualPointsAdjustment', 'lastAdjustmentReason']));
         allow delete: if isSignedIn() && participantId == request.auth.uid;
       }
     }

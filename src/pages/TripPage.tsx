@@ -1,11 +1,7 @@
-import AddIcon from '@mui/icons-material/Add';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import {
     Alert,
-    Avatar,
     Box,
     Button,
-    Chip,
     CircularProgress,
     Container,
     Dialog,
@@ -13,26 +9,9 @@ import {
     DialogContent,
     DialogContentText,
     DialogTitle,
-    Divider,
-    Fab,
-    Grid,
-    IconButton,
-    List,
-    ListItem,
-    ListItemAvatar,
-    ListItemText,
     Paper,
     Tab,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
     Tabs,
-    Typography,
-    useMediaQuery,
-    useTheme,
 } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -40,16 +19,20 @@ import { orderBy, Timestamp, where } from 'firebase/firestore';
 import { useAtomValue, useSetAtom } from 'jotai';
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { CreateQuestForm } from '../components/Quest/CreateQuestForm';
-import { QuestCard } from '../components/Quest/QuestCard';
-import { QuestDetailsModal } from '../components/Quest/QuestDetailsModal';
-import { PendingSubmissionListItem } from '../components/Submission/PendingSubmissionListItem';
-import { ReviewModal } from '../components/Submission/ReviewModal';
-import { TripSubmissionListItem } from '../components/Submission/TripSubmissionListItem';
-import { LeaderboardTable } from '../components/Trip/LeaderboardTable';
+
+import { AdjustPointsModal } from '../components/Trip/AdjustPointsModal';
+import { AdminTab } from '../components/Trip/Tabs/AdminTab';
+import { InfoTab } from '../components/Trip/Tabs/InfoTab';
+import { LeaderboardTab } from '../components/Trip/Tabs/LeaderboardTab';
+import { MembersTab } from '../components/Trip/Tabs/MembersTab';
+import { QuestsTab } from '../components/Trip/Tabs/QuestsTab';
+import { SubmissionsTab } from '../components/Trip/Tabs/SubmissionsTab';
 
 import { useCollection, useDocument } from '../hooks/useFirestore';
-import { leaveTrip } from '../services/firestore/trips';
+import {
+    adjustParticipantPoints,
+    leaveTrip,
+} from '../services/firestore/trips';
 import { userDataAtom } from '../store/atoms/authAtoms';
 import { showNotification } from '../store/atoms/notificationAtom';
 import { QuestDocument } from '../types/Quest';
@@ -61,26 +44,15 @@ export const TripPage: React.FC = () => {
     const { tripId } = useParams<{ tripId: string }>();
     const [tabValue, setTabValue] = React.useState(0);
     const userData = useAtomValue(userDataAtom);
-    const [copySuccess, setCopySuccess] = React.useState(false);
-    const [createQuestDialogOpen, setCreateQuestDialogOpen] =
-        React.useState(false);
-    const [selectedQuest, setSelectedQuest] =
-        React.useState<QuestDocument | null>(null);
     const setNotification = useSetAtom(showNotification);
-    const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
     const navigate = useNavigate();
 
-    // Add state for review modal
-    const [isReviewModalOpen, setIsReviewModalOpen] = React.useState(false);
-    const [selectedSubmissionForReview, setSelectedSubmissionForReview] =
-        React.useState<SubmissionDocument | null>(null);
-
-    // Add state for submission filter
-    const [submissionFilter, setSubmissionFilter] = React.useState<
-        'all' | 'pending' | 'approved' | 'rejected'
-    >('all');
+    // State for points adjustment modal
+    const [isAdjustPointsModalOpen, setIsAdjustPointsModalOpen] =
+        useState(false);
+    const [selectedParticipantForPoints, setSelectedParticipantForPoints] =
+        useState<ParticipantData | null>(null);
 
     // Fetch trip data
     const {
@@ -169,18 +141,25 @@ export const TripPage: React.FC = () => {
         });
 
         // Create leaderboard entries
-        let entries = participants.map((participant) => ({
-            userId: participant.id,
-            pseudo: participant.pseudo,
-            avatarUrl: participant.avatarUrl,
-            totalPoints: pointsMap[participant.id] || 0,
-            rank: 0, // Placeholder, will be calculated after sorting
-        }));
+        let entries = participants.map((participant) => {
+            // Add manual adjustments to the total points (default to 0 if not present)
+            const manualAdjustment = participant.manualPointsAdjustment || 0;
+            const submissionPoints = pointsMap[participant.id] || 0;
+
+            return {
+                userId: participant.id,
+                pseudo: participant.pseudo,
+                avatarUrl: participant.avatarUrl,
+                totalPoints: submissionPoints + manualAdjustment,
+                rank: 0, // Placeholder, will be calculated after sorting
+                // Store these separately for display purposes if needed
+                questPoints: submissionPoints,
+                adjustedPoints: manualAdjustment,
+            };
+        });
 
         // Sort by points (descending)
         entries.sort((a, b) => b.totalPoints - a.totalPoints);
-
-        console.log('entries', entries);
 
         // Assign ranks (handling ties)
         let currentRank = 1;
@@ -200,30 +179,8 @@ export const TripPage: React.FC = () => {
             };
         });
 
-        console.log('Final leaderboard entries:', entries);
         return entries;
     }, [participants, approvedSubmissions]);
-
-    // Filter submissions based on selected filter
-    const filteredSubmissions = React.useMemo(() => {
-        if (!allSubmissions) return [];
-
-        switch (submissionFilter) {
-            case 'pending':
-                return allSubmissions.filter((sub) => sub.status === 'pending');
-            case 'approved':
-                return allSubmissions.filter(
-                    (sub) => sub.status === 'approved'
-                );
-            case 'rejected':
-                return allSubmissions.filter(
-                    (sub) => sub.status === 'rejected'
-                );
-            case 'all':
-            default:
-                return allSubmissions;
-        }
-    }, [allSubmissions, submissionFilter]);
 
     const handleTabChange = (
         _event: React.SyntheticEvent,
@@ -232,46 +189,24 @@ export const TripPage: React.FC = () => {
         setTabValue(newValue);
     };
 
-    const copyInviteCode = () => {
-        if (trip?.inviteCode) {
-            navigator.clipboard.writeText(trip.inviteCode);
-            setCopySuccess(true);
-            setTimeout(() => setCopySuccess(false), 2000);
-        }
+    const handleOpenAdjustPointsModal = (participant: ParticipantData) => {
+        setSelectedParticipantForPoints(participant);
+        setIsAdjustPointsModalOpen(true);
     };
 
-    const handleOpenCreateQuestDialog = () => {
-        setCreateQuestDialogOpen(true);
+    const handleCloseAdjustPointsModal = () => {
+        setIsAdjustPointsModalOpen(false);
+        setSelectedParticipantForPoints(null);
     };
 
-    const handleCloseCreateQuestDialog = () => {
-        setCreateQuestDialogOpen(false);
-    };
-
-    const handleQuestClick = (quest: QuestDocument) => {
-        setSelectedQuest(quest);
-    };
-
-    const handleCloseQuestDetails = (success?: boolean) => {
-        setSelectedQuest(null);
-        if (success) {
-            setNotification({
-                message: 'Submission received! Pending review.',
-                severity: 'success',
+    const handleAdjustPoints = (points: number, reason: string | null) => {
+        if (selectedParticipantForPoints?.id) {
+            adjustPointsMutation.mutate({
+                participantId: selectedParticipantForPoints.id,
+                points,
+                reason,
             });
         }
-    };
-
-    // Add handler for opening the review modal
-    const handleOpenReviewModal = (submission: SubmissionDocument) => {
-        setSelectedSubmissionForReview(submission);
-        setIsReviewModalOpen(true);
-    };
-
-    // Add handler for closing the review modal
-    const handleCloseReviewModal = () => {
-        setIsReviewModalOpen(false);
-        setSelectedSubmissionForReview(null);
     };
 
     // Check if current user is a participant in this trip
@@ -349,6 +284,48 @@ export const TripPage: React.FC = () => {
         onError: () => {
             setNotification({
                 message: `Failed to leave trip. Please try again.`,
+                severity: 'error',
+            });
+        },
+    });
+
+    const adjustPointsMutation = useMutation({
+        mutationFn: ({
+            participantId,
+            points,
+            reason,
+        }: {
+            participantId: string;
+            points: number;
+            reason: string | null;
+        }) => {
+            if (!tripId) throw new Error('Trip ID is required');
+            return adjustParticipantPoints(
+                tripId,
+                participantId,
+                points,
+                reason
+            );
+        },
+        onSuccess: () => {
+            setNotification({
+                message: 'Points adjusted successfully',
+                severity: 'success',
+            });
+            // Invalidate the participants query to refresh the data
+            queryClient.invalidateQueries({
+                queryKey: ['collection', `trips/${tripId}/participants`],
+            });
+            // Close the modal
+            setIsAdjustPointsModalOpen(false);
+            setSelectedParticipantForPoints(null);
+        },
+        onError: (error) => {
+            setNotification({
+                message:
+                    error instanceof Error
+                        ? error.message
+                        : 'Failed to adjust points',
                 severity: 'error',
             });
         },
@@ -440,19 +417,20 @@ export const TripPage: React.FC = () => {
     return (
         <Container maxWidth="lg">
             <Box sx={{ my: 4 }}>
-                <Typography variant="h4" component="h1" gutterBottom>
-                    {trip.name}
-                </Typography>
-                <Typography
-                    variant="subtitle1"
-                    color="text.secondary"
-                    gutterBottom
-                >
-                    {trip.location} • {formatDate(trip.startDate)} -{' '}
-                    {formatDate(trip.endDate)}
-                </Typography>
+                <Box sx={{ mb: 3 }}>
+                    <h1 style={{ margin: 0 }}>{trip.name}</h1>
+                    <p
+                        style={{
+                            color: 'rgba(0, 0, 0, 0.6)',
+                            margin: '8px 0 0 0',
+                        }}
+                    >
+                        {trip.location} • {formatDate(trip.startDate)} -{' '}
+                        {formatDate(trip.endDate)}
+                    </p>
+                </Box>
 
-                <Paper sx={{ width: '100%', mt: 3 }}>
+                <Paper sx={{ width: '100%' }}>
                     <Tabs
                         value={tabValue}
                         onChange={handleTabChange}
@@ -471,781 +449,88 @@ export const TripPage: React.FC = () => {
 
                     <Box sx={{ p: 3 }}>
                         {tabValue === 0 && (
-                            <Box sx={{ position: 'relative' }}>
-                                <Typography variant="h6" gutterBottom>
-                                    Quests
-                                </Typography>
-
-                                {isQuestsLoading ? (
-                                    <Box
-                                        sx={{
-                                            display: 'flex',
-                                            justifyContent: 'center',
-                                            my: 4,
-                                        }}
-                                    >
-                                        <CircularProgress />
-                                    </Box>
-                                ) : isQuestsError ? (
-                                    <Alert severity="error" sx={{ my: 2 }}>
-                                        Error loading quests:{' '}
-                                        {questsError instanceof Error
-                                            ? questsError.message
-                                            : 'Unknown error'}
-                                    </Alert>
-                                ) : quests && quests.length > 0 ? (
-                                    <Grid container spacing={2}>
-                                        {quests.map((quest) => (
-                                            <Grid
-                                                key={quest.id}
-                                                size={{ xs: 12, sm: 6, md: 4 }}
-                                            >
-                                                <QuestCard
-                                                    quest={quest}
-                                                    onClick={() =>
-                                                        quest.id &&
-                                                        handleQuestClick(quest)
-                                                    }
-                                                />
-                                            </Grid>
-                                        ))}
-                                    </Grid>
-                                ) : (
-                                    <Box sx={{ my: 4, textAlign: 'center' }}>
-                                        <Typography
-                                            variant="body1"
-                                            gutterBottom
-                                        >
-                                            No quests created yet. Be the first!
-                                        </Typography>
-                                        <Button
-                                            variant="contained"
-                                            startIcon={<AddIcon />}
-                                            onClick={
-                                                handleOpenCreateQuestDialog
-                                            }
-                                            sx={{ mt: 2 }}
-                                        >
-                                            Create Your First Quest
-                                        </Button>
-                                    </Box>
-                                )}
-
-                                {/* Pending Submissions for Review Section - Updated to use the new list and modal approach */}
-                                {submissionsToReview &&
-                                    submissionsToReview.length > 0 && (
-                                        <Box sx={{ mt: 4 }}>
-                                            <Divider sx={{ mb: 3 }} />
-                                            <Typography
-                                                variant="h6"
-                                                gutterBottom
-                                            >
-                                                Pending Submissions for Review
-                                            </Typography>
-
-                                            <List disablePadding>
-                                                {submissionsToReview.map(
-                                                    (submission) => {
-                                                        const quest =
-                                                            submission.questId &&
-                                                            questsById[
-                                                                submission
-                                                                    .questId
-                                                            ];
-
-                                                        if (!quest) {
-                                                            return null; // Skip if quest not found
-                                                        }
-
-                                                        return (
-                                                            <PendingSubmissionListItem
-                                                                key={
-                                                                    submission.id
-                                                                }
-                                                                submission={
-                                                                    submission
-                                                                }
-                                                                questTitle={
-                                                                    quest.title
-                                                                }
-                                                                questPoints={
-                                                                    quest.points
-                                                                }
-                                                                onClick={() =>
-                                                                    handleOpenReviewModal(
-                                                                        submission
-                                                                    )
-                                                                }
-                                                            />
-                                                        );
-                                                    }
-                                                )}
-                                            </List>
-                                        </Box>
-                                    )}
-
-                                {isSubmissionsLoading ? (
-                                    <Box
-                                        sx={{
-                                            display: 'flex',
-                                            justifyContent: 'center',
-                                            my: 2,
-                                        }}
-                                    >
-                                        <CircularProgress size={24} />
-                                    </Box>
-                                ) : (
-                                    !isSubmissionsError &&
-                                    submissionsToReview &&
-                                    submissionsToReview.length === 0 && (
-                                        <Box sx={{ mt: 4 }}>
-                                            <Divider sx={{ mb: 3 }} />
-                                            <Typography
-                                                variant="h6"
-                                                gutterBottom
-                                            >
-                                                Pending Submissions for Review
-                                            </Typography>
-                                            <Box
-                                                sx={{
-                                                    textAlign: 'center',
-                                                    py: 3,
-                                                }}
-                                            >
-                                                <Typography
-                                                    variant="body1"
-                                                    color="text.secondary"
-                                                >
-                                                    No pending submissions to
-                                                    review at this time.
-                                                </Typography>
-                                            </Box>
-                                        </Box>
-                                    )
-                                )}
-
-                                {isSubmissionsError && (
-                                    <Box sx={{ mt: 4 }}>
-                                        <Alert severity="error" sx={{ my: 2 }}>
-                                            Error loading submissions:{' '}
-                                            {submissionsError instanceof Error
-                                                ? submissionsError.message
-                                                : 'Unknown error'}
-                                        </Alert>
-                                    </Box>
-                                )}
-
-                                {/* Floating action button to create a new quest */}
-                                {quests && quests.length > 0 && (
-                                    <Fab
-                                        color="primary"
-                                        aria-label="add quest"
-                                        onClick={handleOpenCreateQuestDialog}
-                                        sx={{
-                                            position: 'fixed',
-                                            bottom: 24,
-                                            right: 24,
-                                        }}
-                                    >
-                                        <AddIcon />
-                                    </Fab>
-                                )}
-
-                                {/* Create Quest Dialog */}
-                                <Dialog
-                                    open={createQuestDialogOpen}
-                                    onClose={handleCloseCreateQuestDialog}
-                                    maxWidth="sm"
-                                    fullWidth
-                                >
-                                    <Box sx={{ p: 3 }}>
-                                        <CreateQuestForm
-                                            tripId={tripId || ''}
-                                            onClose={
-                                                handleCloseCreateQuestDialog
-                                            }
-                                        />
-                                    </Box>
-                                </Dialog>
-
-                                {/* Quest Details Modal */}
-                                {selectedQuest && (
-                                    <QuestDetailsModal
-                                        quest={selectedQuest}
-                                        open={!!selectedQuest}
-                                        onClose={handleCloseQuestDetails}
-                                    />
-                                )}
-
-                                {/* Review Modal - New component */}
-                                <ReviewModal
-                                    open={isReviewModalOpen}
-                                    onClose={handleCloseReviewModal}
-                                    submission={selectedSubmissionForReview}
-                                    quest={
-                                        selectedSubmissionForReview?.questId
-                                            ? questsById[
-                                                  selectedSubmissionForReview
-                                                      .questId
-                                              ]
-                                            : null
-                                    }
-                                />
-                            </Box>
+                            <QuestsTab
+                                tripId={tripId || ''}
+                                quests={quests}
+                                isQuestsLoading={isQuestsLoading}
+                                isQuestsError={isQuestsError}
+                                questsError={questsError}
+                                submissionsToReview={submissionsToReview}
+                                questsById={questsById}
+                                isSubmissionsLoading={isSubmissionsLoading}
+                                isSubmissionsError={isSubmissionsError}
+                                submissionsError={submissionsError}
+                            />
                         )}
 
                         {tabValue === 1 && (
-                            <Box>
-                                <Typography variant="h6" gutterBottom>
-                                    Leaderboard
-                                </Typography>
-
-                                {isParticipantsLoading ||
-                                isSubmissionsLoading ? (
-                                    <Box
-                                        sx={{
-                                            display: 'flex',
-                                            justifyContent: 'center',
-                                            my: 4,
-                                        }}
-                                    >
-                                        <CircularProgress />
-                                    </Box>
-                                ) : isParticipantsError ||
-                                  isSubmissionsError ? (
-                                    <Alert severity="error" sx={{ my: 2 }}>
-                                        Error loading leaderboard data:{' '}
-                                        {isParticipantsError &&
-                                        participantsError instanceof Error
-                                            ? participantsError.message
-                                            : isSubmissionsError &&
-                                              submissionsError instanceof Error
-                                            ? submissionsError.message
-                                            : 'Unknown error'}
-                                    </Alert>
-                                ) : (
-                                    <LeaderboardTable
-                                        leaderboardData={leaderboardData}
-                                    />
-                                )}
-                            </Box>
+                            <LeaderboardTab
+                                leaderboardData={leaderboardData}
+                                isParticipantsLoading={isParticipantsLoading}
+                                isSubmissionsLoading={isSubmissionsLoading}
+                                isParticipantsError={isParticipantsError}
+                                isSubmissionsError={isSubmissionsError}
+                                participantsError={participantsError}
+                                submissionsError={submissionsError}
+                            />
                         )}
 
                         {tabValue === 2 && (
-                            <Box>
-                                <Typography variant="h6" gutterBottom>
-                                    Trip Members
-                                </Typography>
-
-                                {isParticipantsLoading ? (
-                                    <Box
-                                        sx={{
-                                            display: 'flex',
-                                            justifyContent: 'center',
-                                            my: 2,
-                                        }}
-                                    >
-                                        <CircularProgress size={24} />
-                                    </Box>
-                                ) : isParticipantsError ? (
-                                    <Alert severity="error" sx={{ my: 2 }}>
-                                        Error loading participants:{' '}
-                                        {participantsError instanceof Error
-                                            ? participantsError.message
-                                            : 'Unknown error'}
-                                    </Alert>
-                                ) : participants && participants.length > 0 ? (
-                                    <List>
-                                        {participants.map((participant) => (
-                                            <ListItem key={participant.id}>
-                                                <ListItemAvatar>
-                                                    <Avatar
-                                                        src={
-                                                            participant.avatarUrl ||
-                                                            undefined
-                                                        }
-                                                        alt={participant.pseudo}
-                                                    >
-                                                        {participant.pseudo
-                                                            .charAt(0)
-                                                            .toUpperCase()}
-                                                    </Avatar>
-                                                </ListItemAvatar>
-                                                <ListItemText
-                                                    primary={participant.pseudo}
-                                                    secondary={formatDate(
-                                                        participant.joinedAt
-                                                    )}
-                                                />
-                                                <Chip
-                                                    label={participant.role}
-                                                    color={
-                                                        participant.role ===
-                                                        'organizer'
-                                                            ? 'primary'
-                                                            : 'default'
-                                                    }
-                                                    size="small"
-                                                />
-                                            </ListItem>
-                                        ))}
-                                    </List>
-                                ) : (
-                                    <Typography variant="body1">
-                                        No participants found.
-                                    </Typography>
-                                )}
-                            </Box>
+                            <MembersTab
+                                participants={participants}
+                                isParticipantsLoading={isParticipantsLoading}
+                                isParticipantsError={isParticipantsError}
+                                participantsError={participantsError}
+                                formatDate={formatDate}
+                            />
                         )}
 
                         {tabValue === 3 && (
-                            <Box>
-                                <Typography variant="h6" gutterBottom>
-                                    Trip Information
-                                </Typography>
-
-                                <Grid container spacing={2}>
-                                    <Grid size={12}>
-                                        <Typography
-                                            variant="subtitle1"
-                                            fontWeight="bold"
-                                        >
-                                            Description
-                                        </Typography>
-                                        <Typography variant="body1" paragraph>
-                                            {trip.description}
-                                        </Typography>
-                                    </Grid>
-
-                                    <Grid size={{ xs: 12, sm: 6 }}>
-                                        <Typography
-                                            variant="subtitle1"
-                                            fontWeight="bold"
-                                        >
-                                            Location
-                                        </Typography>
-                                        <Typography variant="body1" paragraph>
-                                            {trip.location}
-                                        </Typography>
-                                    </Grid>
-
-                                    <Grid size={{ xs: 12, sm: 6 }}>
-                                        <Typography
-                                            variant="subtitle1"
-                                            fontWeight="bold"
-                                        >
-                                            Dates
-                                        </Typography>
-                                        <Typography variant="body1" paragraph>
-                                            {formatDate(trip.startDate)} -{' '}
-                                            {formatDate(trip.endDate)}
-                                        </Typography>
-                                    </Grid>
-
-                                    <Grid size={12}>
-                                        <Divider sx={{ my: 2 }} />
-                                    </Grid>
-
-                                    {/* Show invite code to all participants - could be restricted to organizer only */}
-                                    <Grid size={12}>
-                                        <Typography
-                                            variant="subtitle1"
-                                            fontWeight="bold"
-                                        >
-                                            Invite Code
-                                        </Typography>
-                                        <Box
-                                            sx={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                mt: 1,
-                                            }}
-                                        >
-                                            <Typography
-                                                variant="body1"
-                                                sx={{
-                                                    fontFamily: 'monospace',
-                                                    mr: 1,
-                                                }}
-                                            >
-                                                {trip.inviteCode}
-                                            </Typography>
-                                            <IconButton
-                                                onClick={copyInviteCode}
-                                                color={
-                                                    copySuccess
-                                                        ? 'success'
-                                                        : 'default'
-                                                }
-                                                size="small"
-                                            >
-                                                <ContentCopyIcon />
-                                            </IconButton>
-                                            {copySuccess && (
-                                                <Typography
-                                                    variant="caption"
-                                                    color="success.main"
-                                                    sx={{ ml: 1 }}
-                                                >
-                                                    Copied!
-                                                </Typography>
-                                            )}
-                                        </Box>
-                                    </Grid>
-
-                                    <Grid size={12}>
-                                        <Box sx={{ mt: 4 }}>
-                                            <Typography
-                                                variant="h6"
-                                                sx={{ mb: 2 }}
-                                            >
-                                                Trip Membership
-                                            </Typography>
-                                            <Button
-                                                variant="outlined"
-                                                color="error"
-                                                onClick={handleOpenLeaveDialog}
-                                            >
-                                                Leave Trip
-                                            </Button>
-                                        </Box>
-                                    </Grid>
-                                </Grid>
-                            </Box>
+                            <InfoTab
+                                trip={trip}
+                                formatDate={formatDate}
+                                handleOpenLeaveDialog={handleOpenLeaveDialog}
+                            />
                         )}
 
                         {tabValue === 4 && (
-                            <Box>
-                                <Typography variant="h6" gutterBottom>
-                                    Submissions
-                                </Typography>
-
-                                {isSubmissionsLoading ? (
-                                    <Box
-                                        sx={{
-                                            display: 'flex',
-                                            justifyContent: 'center',
-                                            my: 4,
-                                        }}
-                                    >
-                                        <CircularProgress />
-                                    </Box>
-                                ) : isSubmissionsError ? (
-                                    <Alert severity="error" sx={{ my: 2 }}>
-                                        Error loading submissions:{' '}
-                                        {submissionsError instanceof Error
-                                            ? submissionsError.message
-                                            : 'Unknown error'}
-                                    </Alert>
-                                ) : allSubmissions &&
-                                  allSubmissions.length > 0 ? (
-                                    <>
-                                        {/* Submission status filter chips */}
-                                        <Box
-                                            sx={{
-                                                mb: 2,
-                                                display: 'flex',
-                                                gap: 0.5,
-                                                flexWrap: 'wrap',
-                                                justifyContent: isMobile
-                                                    ? 'center'
-                                                    : 'flex-start',
-                                            }}
-                                        >
-                                            <Chip
-                                                label={`All (${allSubmissions.length})`}
-                                                color="primary"
-                                                variant={
-                                                    submissionFilter === 'all'
-                                                        ? 'filled'
-                                                        : 'outlined'
-                                                }
-                                                onClick={() =>
-                                                    setSubmissionFilter('all')
-                                                }
-                                                sx={{
-                                                    fontSize: isMobile
-                                                        ? '0.7rem'
-                                                        : '0.8rem',
-                                                    height: isMobile
-                                                        ? '28px'
-                                                        : '32px',
-                                                    mb: 0.5,
-                                                    '& .MuiChip-label': {
-                                                        px: isMobile ? 1 : 1.5,
-                                                    },
-                                                }}
-                                            />
-                                            <Chip
-                                                label={`Pending (${pendingSubmissions.length})`}
-                                                color="default"
-                                                variant={
-                                                    submissionFilter ===
-                                                    'pending'
-                                                        ? 'filled'
-                                                        : 'outlined'
-                                                }
-                                                onClick={() =>
-                                                    setSubmissionFilter(
-                                                        'pending'
-                                                    )
-                                                }
-                                                sx={{
-                                                    fontSize: isMobile
-                                                        ? '0.7rem'
-                                                        : '0.8rem',
-                                                    height: isMobile
-                                                        ? '28px'
-                                                        : '32px',
-                                                    mb: 0.5,
-                                                    '& .MuiChip-label': {
-                                                        px: isMobile ? 1 : 1.5,
-                                                    },
-                                                }}
-                                            />
-                                            <Chip
-                                                label={`Approved (${approvedSubmissions.length})`}
-                                                color="success"
-                                                variant={
-                                                    submissionFilter ===
-                                                    'approved'
-                                                        ? 'filled'
-                                                        : 'outlined'
-                                                }
-                                                onClick={() =>
-                                                    setSubmissionFilter(
-                                                        'approved'
-                                                    )
-                                                }
-                                                sx={{
-                                                    fontSize: isMobile
-                                                        ? '0.7rem'
-                                                        : '0.8rem',
-                                                    height: isMobile
-                                                        ? '28px'
-                                                        : '32px',
-                                                    mb: 0.5,
-                                                    '& .MuiChip-label': {
-                                                        px: isMobile ? 1 : 1.5,
-                                                    },
-                                                }}
-                                            />
-                                            <Chip
-                                                label={`Rejected (${
-                                                    allSubmissions.filter(
-                                                        (s) =>
-                                                            s.status ===
-                                                            'rejected'
-                                                    ).length
-                                                })`}
-                                                color="error"
-                                                variant={
-                                                    submissionFilter ===
-                                                    'rejected'
-                                                        ? 'filled'
-                                                        : 'outlined'
-                                                }
-                                                onClick={() =>
-                                                    setSubmissionFilter(
-                                                        'rejected'
-                                                    )
-                                                }
-                                                sx={{
-                                                    fontSize: isMobile
-                                                        ? '0.7rem'
-                                                        : '0.8rem',
-                                                    height: isMobile
-                                                        ? '28px'
-                                                        : '32px',
-                                                    mb: 0.5,
-                                                    '& .MuiChip-label': {
-                                                        px: isMobile ? 1 : 1.5,
-                                                    },
-                                                }}
-                                            />
-                                        </Box>
-
-                                        <List>
-                                            {filteredSubmissions
-                                                .sort((a, b) => {
-                                                    // Sort by submission date (newest first)
-                                                    const dateA =
-                                                        a.submittedAt instanceof
-                                                        Timestamp
-                                                            ? a.submittedAt
-                                                                  .toDate()
-                                                                  .getTime()
-                                                            : a.submittedAt?.getTime() ||
-                                                              0;
-                                                    const dateB =
-                                                        b.submittedAt instanceof
-                                                        Timestamp
-                                                            ? b.submittedAt
-                                                                  .toDate()
-                                                                  .getTime()
-                                                            : b.submittedAt?.getTime() ||
-                                                              0;
-                                                    return dateB - dateA;
-                                                })
-                                                .map((submission) => {
-                                                    const quest =
-                                                        submission.questId &&
-                                                        questsById[
-                                                            submission.questId
-                                                        ];
-
-                                                    if (!quest) {
-                                                        return null; // Skip if quest not found
-                                                    }
-
-                                                    return (
-                                                        <TripSubmissionListItem
-                                                            key={submission.id}
-                                                            submission={
-                                                                submission
-                                                            }
-                                                            questTitle={
-                                                                quest.title
-                                                            }
-                                                            questPoints={
-                                                                quest.points
-                                                            }
-                                                        />
-                                                    );
-                                                })}
-                                        </List>
-                                    </>
-                                ) : (
-                                    <Typography variant="body1">
-                                        No submissions found.
-                                    </Typography>
-                                )}
-                            </Box>
+                            <SubmissionsTab
+                                allSubmissions={allSubmissions}
+                                isSubmissionsLoading={isSubmissionsLoading}
+                                isSubmissionsError={isSubmissionsError}
+                                submissionsError={submissionsError}
+                                questsById={questsById}
+                            />
                         )}
 
-                        {/* Admin Tab - Visible only to organizers */}
                         {tabValue === 5 && isCurrentUserOrganizer && (
-                            <Box>
-                                <Typography variant="h6" gutterBottom>
-                                    Trip Administration
-                                </Typography>
-
-                                <Typography
-                                    variant="subtitle1"
-                                    sx={{ mt: 3, mb: 2 }}
-                                >
-                                    Participant Management
-                                </Typography>
-
-                                {isParticipantsLoading ? (
-                                    <Box
-                                        sx={{
-                                            display: 'flex',
-                                            justifyContent: 'center',
-                                            my: 2,
-                                        }}
-                                    >
-                                        <CircularProgress size={24} />
-                                    </Box>
-                                ) : isParticipantsError ? (
-                                    <Alert severity="error" sx={{ my: 2 }}>
-                                        Error loading participants:{' '}
-                                        {participantsError instanceof Error
-                                            ? participantsError.message
-                                            : 'Unknown error'}
-                                    </Alert>
-                                ) : participants && participants.length > 0 ? (
-                                    <TableContainer
-                                        component={Paper}
-                                        variant="outlined"
-                                    >
-                                        <Table>
-                                            <TableHead>
-                                                <TableRow>
-                                                    <TableCell>
-                                                        Participant
-                                                    </TableCell>
-                                                    <TableCell>Role</TableCell>
-                                                    <TableCell>
-                                                        Joined Date
-                                                    </TableCell>
-                                                </TableRow>
-                                            </TableHead>
-                                            <TableBody>
-                                                {participants.map(
-                                                    (participant) => (
-                                                        <TableRow
-                                                            key={participant.id}
-                                                        >
-                                                            <TableCell>
-                                                                <Box
-                                                                    sx={{
-                                                                        display:
-                                                                            'flex',
-                                                                        alignItems:
-                                                                            'center',
-                                                                    }}
-                                                                >
-                                                                    <Avatar
-                                                                        src={
-                                                                            participant.avatarUrl ||
-                                                                            undefined
-                                                                        }
-                                                                        alt={
-                                                                            participant.pseudo
-                                                                        }
-                                                                        sx={{
-                                                                            mr: 2,
-                                                                        }}
-                                                                    >
-                                                                        {participant.pseudo
-                                                                            .charAt(
-                                                                                0
-                                                                            )
-                                                                            .toUpperCase()}
-                                                                    </Avatar>
-                                                                    <Typography variant="body1">
-                                                                        {
-                                                                            participant.pseudo
-                                                                        }
-                                                                    </Typography>
-                                                                </Box>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Chip
-                                                                    label={
-                                                                        participant.role
-                                                                    }
-                                                                    color={
-                                                                        participant.role ===
-                                                                        'organizer'
-                                                                            ? 'primary'
-                                                                            : 'default'
-                                                                    }
-                                                                    size="small"
-                                                                />
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                {formatDate(
-                                                                    participant.joinedAt
-                                                                )}
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    )
-                                                )}
-                                            </TableBody>
-                                        </Table>
-                                    </TableContainer>
-                                ) : (
-                                    <Typography variant="body1">
-                                        No participants found.
-                                    </Typography>
-                                )}
-                            </Box>
+                            <AdminTab
+                                participants={participants}
+                                isParticipantsLoading={isParticipantsLoading}
+                                isParticipantsError={isParticipantsError}
+                                participantsError={participantsError}
+                                handleOpenAdjustPointsModal={
+                                    handleOpenAdjustPointsModal
+                                }
+                            />
                         )}
                     </Box>
                 </Paper>
             </Box>
+
+            {/* Adjust Points Modal */}
+            {selectedParticipantForPoints && (
+                <AdjustPointsModal
+                    open={isAdjustPointsModalOpen}
+                    onClose={handleCloseAdjustPointsModal}
+                    onSubmit={handleAdjustPoints}
+                    isSubmitting={adjustPointsMutation.isPending}
+                    participantName={selectedParticipantForPoints.pseudo}
+                    currentAdjustment={
+                        selectedParticipantForPoints.manualPointsAdjustment || 0
+                    }
+                />
+            )}
 
             {/* Leave Trip Confirmation Dialog */}
             <Dialog open={leaveDialogOpen} onClose={handleCloseLeaveDialog}>

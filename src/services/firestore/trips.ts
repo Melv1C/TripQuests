@@ -7,6 +7,7 @@ import {
     doc,
     getDoc,
     getDocs,
+    increment,
     serverTimestamp,
     setDoc,
     Timestamp,
@@ -269,5 +270,34 @@ export async function leaveTrip(tripId: string, userId: string): Promise<void> {
     } catch (error) {
         console.error('Error leaving trip:', error);
         throw error;
+    }
+}
+
+/**
+ * Adjusts points for a participant in a trip
+ * Uses atomic increment to avoid race conditions
+ */
+export async function adjustParticipantPoints(
+    tripId: string,
+    participantId: string,
+    pointsToAdd: number,
+    reason: string | null
+): Promise<void> {
+    try {
+        const participantRef = doc(
+            db,
+            'trips',
+            tripId,
+            'participants',
+            participantId
+        );
+
+        await updateDoc(participantRef, {
+            manualPointsAdjustment: increment(pointsToAdd),
+            lastAdjustmentReason: reason || null,
+        });
+    } catch (error) {
+        console.error('Error adjusting participant points:', error);
+        throw new Error('Failed to adjust points. Please try again.');
     }
 }
