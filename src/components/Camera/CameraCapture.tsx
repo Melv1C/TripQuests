@@ -1,4 +1,4 @@
-import { CameraAlt, Close } from '@mui/icons-material';
+import { CameraAlt, Close, FlipCameraIos } from '@mui/icons-material';
 import {
     Alert,
     Box,
@@ -23,6 +23,9 @@ export function CameraCapture(props: CameraCaptureProps) {
     const webcamRef = useRef<Webcam>(null);
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [facingMode, setFacingMode] = useState<'user' | 'environment'>(
+        'environment'
+    );
 
     // Reset state when dialog opens/closes
     React.useEffect(() => {
@@ -36,6 +39,13 @@ export function CameraCapture(props: CameraCaptureProps) {
     const handleWebcamError = useCallback(() => {
         setError(
             "Couldn't access camera. Please check permissions or use the file upload option."
+        );
+    }, []);
+
+    // Toggle between front and back cameras
+    const toggleCamera = useCallback(() => {
+        setFacingMode((prevMode) =>
+            prevMode === 'user' ? 'environment' : 'user'
         );
     }, []);
 
@@ -78,18 +88,18 @@ export function CameraCapture(props: CameraCaptureProps) {
         setCapturedImage(null);
     }, []);
 
-    // Video constraints - use rear camera if available
+    // Video constraints - use selected camera mode
     const videoConstraints = {
-        facingMode: 'environment',
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
+        facingMode: facingMode,
+        width: { ideal: 720 },
+        height: { ideal: 1280 },
     };
 
     return (
         <Dialog
             open={open}
             onClose={onClose}
-            maxWidth="sm"
+            maxWidth="xs" // Larger dialog on desktop
             fullWidth
             PaperProps={{
                 sx: {
@@ -122,7 +132,7 @@ export function CameraCapture(props: CameraCaptureProps) {
                         sx={{
                             width: '100%',
                             position: 'relative',
-                            aspectRatio: '3/4',
+                            aspectRatio: { xs: '3/4', sm: '4/3' }, // Portrait on mobile, landscape on desktop
                             backgroundColor: '#000',
                             display: 'flex',
                             justifyContent: 'center',
@@ -130,29 +140,67 @@ export function CameraCapture(props: CameraCaptureProps) {
                         }}
                     >
                         {!capturedImage ? (
-                            <Webcam
-                                ref={webcamRef}
-                                audio={false}
-                                screenshotFormat="image/jpeg"
-                                screenshotQuality={0.92}
-                                videoConstraints={videoConstraints}
-                                onUserMediaError={handleWebcamError}
-                                style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'cover',
-                                }}
-                            />
+                            <>
+                                <Box
+                                    sx={{
+                                        position: 'relative',
+                                        width: '100%',
+                                        height: '100%',
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        overflow: 'hidden', // Keep overflow hidden on this inner container
+                                    }}
+                                >
+                                    <Webcam
+                                        ref={webcamRef}
+                                        audio={false}
+                                        screenshotFormat="image/jpeg"
+                                        screenshotQuality={0.92}
+                                        videoConstraints={videoConstraints}
+                                        onUserMediaError={handleWebcamError}
+                                        style={{
+                                            width: '100%',
+                                            height: '100%',
+                                            objectFit: 'contain', // Use contain to show the entire camera view
+                                        }}
+                                        mirrored={facingMode === 'user'} // Mirror when using front camera
+                                    />
+                                </Box>
+                                <IconButton
+                                    onClick={toggleCamera}
+                                    sx={{
+                                        position: 'absolute',
+                                        bottom: 16,
+                                        right: 16,
+                                        backgroundColor: 'rgba(0,0,0,0.5)',
+                                        color: 'white',
+                                        '&:hover': {
+                                            backgroundColor: 'rgba(0,0,0,0.7)',
+                                        },
+                                    }}
+                                >
+                                    <FlipCameraIos />
+                                </IconButton>
+                            </>
                         ) : (
-                            <img
-                                src={capturedImage}
-                                alt="Captured"
-                                style={{
+                            <Box
+                                sx={{
                                     width: '100%',
                                     height: '100%',
-                                    objectFit: 'cover',
+                                    overflow: 'hidden',
                                 }}
-                            />
+                            >
+                                <img
+                                    src={capturedImage}
+                                    alt="Captured"
+                                    style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        objectFit: 'contain', // Show entire image without cropping
+                                    }}
+                                />
+                            </Box>
                         )}
                     </Box>
                 )}
