@@ -88,7 +88,7 @@ export function CameraCapture(props: CameraCaptureProps) {
         setCapturedImage(null);
     }, []);
 
-    // Video constraints - use selected camera mode
+    // Video constraints - use selected camera mode with portrait orientation preference
     const videoConstraints = {
         facingMode: facingMode,
         width: { ideal: 720 },
@@ -99,7 +99,7 @@ export function CameraCapture(props: CameraCaptureProps) {
         <Dialog
             open={open}
             onClose={onClose}
-            maxWidth="xs" // Larger dialog on desktop
+            maxWidth="xs"
             fullWidth
             PaperProps={{
                 sx: {
@@ -131,8 +131,9 @@ export function CameraCapture(props: CameraCaptureProps) {
                     <Box
                         sx={{
                             width: '100%',
+                            height: 300,
                             position: 'relative',
-                            aspectRatio: { xs: '3/4', sm: '4/3' }, // Portrait on mobile, landscape on desktop
+                            aspectRatio: { xs: '3/4' },
                             backgroundColor: '#000',
                             display: 'flex',
                             justifyContent: 'center',
@@ -164,7 +165,7 @@ export function CameraCapture(props: CameraCaptureProps) {
                                             height: '100%',
                                             objectFit: 'contain', // Use contain to show the entire camera view
                                         }}
-                                        mirrored={facingMode === 'user'} // Mirror when using front camera
+                                        mirrored={facingMode === 'user'}
                                     />
                                 </Box>
                                 <IconButton
