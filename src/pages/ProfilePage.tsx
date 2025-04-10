@@ -31,6 +31,7 @@ import {
     isAuthLoadingAtom,
     userDataAtom,
 } from '../store/atoms/authAtoms';
+import { processImageFile } from '../utils/imageUtils';
 
 export const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
@@ -187,15 +188,42 @@ export const ProfilePage: React.FC = () => {
     };
 
     // Handle file input change
-    const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileInputChange = async (
+        e: React.ChangeEvent<HTMLInputElement>
+    ) => {
         if (e.target.files && e.target.files[0]) {
-            setValue('avatarFile', e.target.files[0]);
+            try {
+                const processedFile = await processImageFile(e.target.files[0]);
+                setValue('avatarFile', processedFile);
+            } catch (error) {
+                console.error('Error processing image:', error);
+                setSnackbar({
+                    open: true,
+                    message:
+                        error instanceof Error
+                            ? error.message
+                            : 'Error processing image',
+                    severity: 'error',
+                });
+            }
         }
     };
 
     // Handle captured image from camera
-    const handleCapturedImage = (file: File) => {
-        setValue('avatarFile', file);
+    const handleCapturedImage = async (file: File) => {
+        try {
+            const processedFile = await processImageFile(file);
+            setValue('avatarFile', processedFile);
+        } catch (error) {
+            setSnackbar({
+                open: true,
+                message:
+                    error instanceof Error
+                        ? error.message
+                        : 'Error processing image',
+                severity: 'error',
+            });
+        }
     };
 
     // Handle snackbar close

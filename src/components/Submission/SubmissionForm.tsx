@@ -7,6 +7,7 @@ import {
     Button,
     CircularProgress,
     Paper,
+    Snackbar,
     Stack,
     TextField,
     Typography,
@@ -23,6 +24,7 @@ import {
 import { createSubmission } from '../../services/firestore/submissions';
 import { uploadSubmissionImage } from '../../services/storage';
 import { userDataAtom } from '../../store/atoms/authAtoms';
+import { processImageFile } from '../../utils/imageUtils';
 import { CameraCapture } from '../Camera/CameraCapture'; // Import CameraCapture component
 
 // Styled components for file upload
@@ -55,6 +57,18 @@ const SubmissionForm: React.FC<SubmissionFormProps> = ({
     );
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [isCameraOpen, setIsCameraOpen] = useState(false); // Add state for camera dialog
+
+    // State for snackbar
+    const [snackbar, setSnackbar] = useState({
+        open: false,
+        message: '',
+        severity: 'success' as 'success' | 'error',
+    });
+
+    // Handle snackbar close
+    const handleCloseSnackbar = () => {
+        setSnackbar((prev) => ({ ...prev, open: false }));
+    };
 
     const {
         control,
@@ -108,34 +122,63 @@ const SubmissionForm: React.FC<SubmissionFormProps> = ({
     };
 
     // Handle file selection
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (
+        event: React.ChangeEvent<HTMLInputElement>
+    ) => {
         const file = event.target.files?.[0];
         if (file) {
-            setSelectedFileName(file.name);
+            try {
+                const processedFile = await processImageFile(file);
+                control._formValues.imageFile = processedFile;
+                setSelectedFileName(processedFile.name);
 
-            // Create a preview
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                setPreviewUrl(e.target?.result as string);
-            };
-            reader.readAsDataURL(file);
+                // Create a preview
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    setPreviewUrl(e.target?.result as string);
+                };
+                reader.readAsDataURL(processedFile);
+            } catch (error) {
+                // Show error if conversion fails
+                setSnackbar({
+                    open: true,
+                    message:
+                        error instanceof Error
+                            ? error.message
+                            : 'Failed to process image',
+                    severity: 'error',
+                });
+            }
         }
     };
 
     // Handle captured image from camera
-    const handleCapturedImage = (file: File) => {
-        // Set form value
-        control._formValues.imageFile = file;
+    const handleCapturedImage = async (file: File) => {
+        try {
+            const processedFile = await processImageFile(file);
+            // Set form value
+            control._formValues.imageFile = processedFile;
 
-        // Update UI state
-        setSelectedFileName(file.name);
+            // Update UI state
+            setSelectedFileName(processedFile.name);
 
-        // Create preview
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            setPreviewUrl(e.target?.result as string);
-        };
-        reader.readAsDataURL(file);
+            // Create preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                setPreviewUrl(e.target?.result as string);
+            };
+            reader.readAsDataURL(processedFile);
+        } catch (error) {
+            // Show error if conversion fails
+            setSnackbar({
+                open: true,
+                message:
+                    error instanceof Error
+                        ? error.message
+                        : 'Failed to process image',
+                severity: 'error',
+            });
+        }
     };
 
     return (
@@ -189,7 +232,7 @@ const SubmissionForm: React.FC<SubmissionFormProps> = ({
                                             Upload Photo
                                             <VisuallyHiddenInput
                                                 type="file"
-                                                accept="image/jpeg,image/png,image/jpg"
+                                                accept="image/*"
                                                 onChange={(e) => {
                                                     const file =
                                                         e.target.files?.[0];
@@ -299,6 +342,20 @@ const SubmissionForm: React.FC<SubmissionFormProps> = ({
                 onClose={() => setIsCameraOpen(false)}
                 onImageCapture={handleCapturedImage}
             />
+
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={6000}
+                onClose={handleCloseSnackbar}
+            >
+                <Alert
+                    onClose={handleCloseSnackbar}
+                    severity={snackbar.severity}
+                    sx={{ width: '100%' }}
+                >
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 };

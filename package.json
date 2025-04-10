@@ -20,6 +20,7 @@
     "@tanstack/react-query-devtools": "^5.71.10",
     "date-fns": "^4.1.0",
     "firebase": "^11.6.0",
+    "heic-convert": "^2.1.0",
     "jotai": "^2.12.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -30,6 +31,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
+    "@types/heic-convert": "^2.1.0",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
