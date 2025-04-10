@@ -12,6 +12,7 @@ import { Timestamp } from 'firebase/firestore';
 import React from 'react';
 import { QuestDocument } from '../../../types/Quest';
 import { SubmissionDocument } from '../../../types/Submission';
+import { ReviewModal } from '../../Submission/ReviewModal';
 import { TripSubmissionListItem } from '../../Submission/TripSubmissionListItem';
 
 interface SubmissionsTabProps {
@@ -34,6 +35,11 @@ export const SubmissionsTab: React.FC<SubmissionsTabProps> = ({
     const [submissionFilter, setSubmissionFilter] = React.useState<
         'all' | 'pending' | 'approved' | 'rejected'
     >('all');
+
+    // Add state for review modal
+    const [isReviewModalOpen, setIsReviewModalOpen] = React.useState(false);
+    const [selectedSubmissionForReview, setSelectedSubmissionForReview] =
+        React.useState<SubmissionDocument | null>(null);
 
     // Filter submissions based on selected filter
     const filteredSubmissions = React.useMemo(() => {
@@ -77,6 +83,17 @@ export const SubmissionsTab: React.FC<SubmissionsTabProps> = ({
             0
         );
     }, [allSubmissions]);
+
+    // Add handler functions for the review modal
+    const handleOpenReviewModal = (submission: SubmissionDocument) => {
+        setSelectedSubmissionForReview(submission);
+        setIsReviewModalOpen(true);
+    };
+
+    const handleCloseReviewModal = () => {
+        setIsReviewModalOpen(false);
+        setSelectedSubmissionForReview(null);
+    };
 
     return (
         <Box>
@@ -210,6 +227,14 @@ export const SubmissionsTab: React.FC<SubmissionsTabProps> = ({
                                         submission={submission}
                                         questTitle={quest.title}
                                         questPoints={quest.points}
+                                        onClick={
+                                            submission.status === 'pending'
+                                                ? () =>
+                                                      handleOpenReviewModal(
+                                                          submission
+                                                      )
+                                                : undefined
+                                        }
                                     />
                                 );
                             })}
@@ -218,6 +243,18 @@ export const SubmissionsTab: React.FC<SubmissionsTabProps> = ({
             ) : (
                 <Typography variant="body1">No submissions found.</Typography>
             )}
+
+            {/* Review Modal */}
+            <ReviewModal
+                open={isReviewModalOpen}
+                onClose={handleCloseReviewModal}
+                submission={selectedSubmissionForReview}
+                quest={
+                    selectedSubmissionForReview?.questId
+                        ? questsById[selectedSubmissionForReview.questId]
+                        : null
+                }
+            />
         </Box>
     );
 };
