@@ -54,7 +54,7 @@ export function useCollection<T = DocumentData>(
   } = {}
 ) {
   const constraintsKey = JSON.stringify(
-    constraints.map(c => c.toString()).sort()
+    constraints.map(c => JSON.stringify(c))
   );
 
   return useQuery({
