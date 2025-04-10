@@ -7,8 +7,8 @@ export const submissionSchema = z.object({
   imageFile: z
     .instanceof(File, { message: 'Image file is required' })
     .refine(
-      (file) => file.size <= 2 * 1024 * 1024, // 2MB max size
-      { message: 'Image file must be less than 2MB' }
+      (file) => file.size <= 10 * 1024 * 1024, // 10MB max size
+      { message: 'Image file must be less than 10MB' }
     )
     .refine(
       (file) => ['image/jpeg', 'image/png', 'image/jpg'].includes(file.type),
