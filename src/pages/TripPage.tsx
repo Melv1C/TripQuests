@@ -500,6 +500,7 @@ export const TripPage: React.FC = () => {
                                 isSubmissionsError={isSubmissionsError}
                                 submissionsError={submissionsError}
                                 questsById={questsById}
+                                currentUserId={userData?.uid || ''}
                             />
                         )}
 

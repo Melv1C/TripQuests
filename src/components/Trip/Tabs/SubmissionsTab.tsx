@@ -21,6 +21,7 @@ interface SubmissionsTabProps {
     isSubmissionsError: boolean;
     submissionsError: unknown;
     questsById: Record<string, QuestDocument>;
+    currentUserId: string; // Add currentUserId prop
 }
 
 export const SubmissionsTab: React.FC<SubmissionsTabProps> = ({
@@ -29,6 +30,7 @@ export const SubmissionsTab: React.FC<SubmissionsTabProps> = ({
     isSubmissionsError,
     submissionsError,
     questsById,
+    currentUserId, // Add to destructuring
 }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -228,7 +230,9 @@ export const SubmissionsTab: React.FC<SubmissionsTabProps> = ({
                                         questTitle={quest.title}
                                         questPoints={quest.points}
                                         onClick={
-                                            submission.status === 'pending'
+                                            submission.status === 'pending' &&
+                                            submission.submitterId !==
+                                                currentUserId
                                                 ? () =>
                                                       handleOpenReviewModal(
                                                           submission
